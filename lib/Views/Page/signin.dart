@@ -1,13 +1,10 @@
-// ignore_for_file: prefer_const_constructors, camel_case_types, prefer_const_literals_to_create_immutables, sized_box_for_whitespace, body_might_complete_normally_nullable, unused_import, unused_field, prefer_final_fields, use_build_context_synchronously
+// ignore_for_file: prefer_const_constructors
 
-import 'dart:convert';
-import 'dart:io';
-import 'package:demo_interview/main.dart';
-import 'package:demo_interview/Views/Page/singup.dart';
-import 'package:demo_interview/constant.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:demo_interview/main.dart';
+import 'package:demo_interview/Views/Page/signup.dart';
+import 'package:demo_interview/Route/base_routes.dart';
+import 'package:demo_interview/constant.dart';
 
 class Signin extends StatefulWidget {
   const Signin({super.key});
@@ -17,139 +14,168 @@ class Signin extends StatefulWidget {
 }
 
 class _SigninState extends State<Signin> {
-  bool _isOuscure = true;
-  bool loading = false;
-  // bool _isRememberme = true;
+  final _formKey = GlobalKey<FormState>();
 
-  final _formkey = GlobalKey<FormState>();
-  TextEditingController _usernameControler = TextEditingController();
-  TextEditingController _passwordControler = TextEditingController();
-  var sneckBar = SnackBar(content: Text('Longin Success!'));
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
-  void _signinUser() async {
-    // Mock API call
+  bool _isObscure = true;
+  bool _loading = false;
+
+  Future<void> _signinUser() async {
     await Future.delayed(const Duration(seconds: 2));
-    if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => MainScreen()),
-        (route) => false,
-      );
-    }
+    if (!mounted) return;
+
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      BaseRoute.dashboard,
+      (route) => false,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 227, 207, 54),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.only(left: 20, right: 20),
-          child: Form(
-            key: _formkey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'WELCOME TO SHOPING',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 25,
-                    fontWeight: FontWeight.bold,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 40),
+
+                  Text(
+                    'Sign In',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
                   ),
-                ),
-                SizedBox(height: 50),
-                Container(
-                  height: 54,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.all(Radius.circular(20)),
-                  ),
-                  child: TextFormField(
-                    controller: _usernameControler,
-                    decoration: kInputDecoration('Username'),
+
+                  const SizedBox(height: 40),
+
+                  /// Email
+                  TextFormField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: kInputDecoration(
+                      hintText: "Email",
+                      prefixIcon: Icon(Icons.email),
+                    ),
                     validator: (value) {
-                      if (value!.isEmpty) {
-                        return 'Invalid usrenam';
+                      if (value == null || value.isEmpty) {
+                        return "Email is required";
                       }
+                      if (!value.contains('@')) {
+                        return "Enter a valid email";
+                      }
+                      return null;
                     },
                   ),
-                ),
-                SizedBox(height: 15),
-                Container(
-                  height: 54,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.all(Radius.circular(20)),
-                  ),
-                  child: TextFormField(
-                    controller: _passwordControler,
-                    obscureText: _isOuscure,
-                    decoration: kInputDecoration('Password'),
+
+                  const SizedBox(height: 20),
+
+                  /// Password
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: _isObscure,
+                    decoration: kInputDecoration(
+                      hintText: "Password",
+                      prefixIcon: Icon(Icons.lock),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _isObscure ? Icons.visibility_off : Icons.visibility,
+                        ),
+                        onPressed: () {
+                          setState(() => _isObscure = !_isObscure);
+                        },
+                      ),
+                    ),
                     validator: (value) {
-                      if (value!.isEmpty) {
-                        return 'Invalid Password ';
+                      if (value == null || value.isEmpty) {
+                        return "Password is required";
                       }
+                      if (value.length < 6) {
+                        return "Password must be at least 6 characters";
+                      }
+                      return null;
                     },
                   ),
-                ),
-                SizedBox(height: 30),
-                kElevatedButton('Sign In', () {
-                  if (_formkey.currentState!.validate()) {
-                    setState(() {
-                      loading = true;
-                    });
-                    _signinUser();
-                  }
-                }),
-                SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text("You have't account yet !"),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(builder: (context) => Singup()),
-                          (Route<dynamic> route) => false,
-                        );
-                      },
-                      child: Text("Sing up"),
-                    ),
-                  ],
-                ),
-                Column(
-                  children: [
-                    Text("Login with an account!"),
-                    SizedBox(height: 15),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          onPressed: () {},
-                          icon: Image.asset(
-                            'icons/facebook.png',
-                            height: 45,
-                            width: 45,
-                          ),
+
+                  const SizedBox(height: 30),
+
+                  /// Button / Loading
+                  _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : kElevatedButton(
+                          label: "Sign In",
+                          onPressed: () {
+                            if (_formKey.currentState!.validate()) {
+                              setState(() => _loading = true);
+                              _signinUser();
+                            }
+                          },
                         ),
-                        SizedBox(width: 5),
-                        IconButton(
-                          onPressed: () {},
-                          icon: Image.asset(
-                            'icons/communication.png',
-                            height: 45,
-                            width: 45,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
+
+                  const SizedBox(height: 15),
+
+                  /// Signup
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text("Don't have an account?"),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (_) => Signup()),
+                          );
+                        },
+                        child: const Text("Sign up"),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  /// Social login
+                  Column(
+                    children: [
+                      const Text("Login with"),
+                      const SizedBox(height: 15),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _socialButton('icons/facebook.png'),
+                          const SizedBox(width: 15),
+                          _socialButton('icons/communication.png'),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _socialButton(String asset) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(30),
+      onTap: () {},
+      child: CircleAvatar(
+        radius: 26,
+        backgroundColor: Colors.white,
+        child: Image.asset(asset, height: 30),
       ),
     );
   }

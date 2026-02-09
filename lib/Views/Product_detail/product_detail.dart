@@ -1,5 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
+import 'package:demo_interview/Route/base_routes.dart';
 import 'package:flutter/material.dart';
 
 class ProductDetail extends StatefulWidget {
@@ -15,6 +16,7 @@ class _ProductDetailState extends State<ProductDetail> {
   int _currentPage = 0;
   int _selectedColorIndex = 0;
   int _selectedSizeIndex = 0;
+  int _quantity = 1;
 
   final List<Color> _colors = [
     const Color.fromARGB(255, 227, 207, 54), // Yellow
@@ -44,12 +46,9 @@ class _ProductDetailState extends State<ProductDetail> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         centerTitle: true,
-        title: const Text(
-          "Detail",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
+
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Image.asset("icons/back.png", height: 30, width: 30),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
@@ -68,6 +67,8 @@ class _ProductDetailState extends State<ProductDetail> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               buildProductDetail(),
+              const SizedBox(height: 24),
+              buildQuantitySelector(),
               const SizedBox(height: 24),
               buildProductColor(),
               const SizedBox(height: 24),
@@ -138,6 +139,74 @@ class _ProductDetailState extends State<ProductDetail> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ================= QUANTITY SELECTOR =================
+  Widget buildQuantitySelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Quantity",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: 130,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildQtyButton(
+                icon: Icons.remove,
+                onTap: () {
+                  if (_quantity > 1) {
+                    setState(() => _quantity--);
+                  }
+                },
+              ),
+              Text(
+                _quantity.toString(),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              _buildQtyButton(
+                icon: Icons.add,
+                onTap: () {
+                  setState(() => _quantity++);
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQtyButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5),
+          ],
+        ),
+        child: Icon(icon, size: 20, color: Colors.black),
       ),
     );
   }
@@ -295,23 +364,52 @@ class _ProductDetailState extends State<ProductDetail> {
         ],
       ),
       child: SafeArea(
-        child: ElevatedButton(
-          onPressed: () {},
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color.fromARGB(255, 227, 207, 54),
-            minimumSize: const Size(double.infinity, 55),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15),
+        child: Row(
+          children: [
+            Expanded(
+              child: customButton(
+                title: "Add to Cart",
+                onTap: () {},
+                color: const Color.fromARGB(255, 227, 207, 54),
+              ),
             ),
-          ),
-          child: const Text(
-            "Add to Cart",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+            const SizedBox(width: 16),
+            Expanded(
+              child: customButton(
+                title: "Payment",
+                onTap: () {
+                  Navigator.pushNamed(context, BaseRoute.payment);
+                },
+                color: Colors.black,
+              ),
             ),
-          ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget customButton({
+    required String title,
+    required Function onTap,
+    required Color color,
+  }) {
+    return ElevatedButton(
+      onPressed: () {
+        onTap();
+      },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        minimumSize: const Size(0, 55),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        elevation: 0,
+      ),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: color == Colors.black ? Colors.white : Colors.black,
         ),
       ),
     );
@@ -344,7 +442,7 @@ class _ExpandableTextState extends State<ExpandableText> {
         GestureDetector(
           onTap: () => setState(() => isExpanded = !isExpanded),
           child: Text(
-            isExpanded ? "Read Less" : "Read More",
+            isExpanded ? "See Less" : "See More",
             style: const TextStyle(
               color: Color.fromARGB(255, 227, 207, 54),
               fontWeight: FontWeight.bold,

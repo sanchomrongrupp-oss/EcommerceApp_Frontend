@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:demo_interview/constant.dart';
 import 'package:demo_interview/Route/base_routes.dart';
 import 'package:flutter/material.dart';
@@ -9,9 +10,59 @@ class Home extends StatefulWidget {
   State<Home> createState() => _HomeState();
 }
 
-class _HomeState extends State<Home> {
+class _HomeState extends State<Home> with TickerProviderStateMixin {
   int _selectedFilterIndex = 0;
   bool _isFavorite = false;
+
+  late PageController _pageController;
+  late AnimationController _rotationController;
+  Timer? _autoScrollTimer;
+  int _currentPage = 0;
+  final int _hotItemsCount = 5;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: 0);
+
+    // Rotation Animation for product images
+    _rotationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 5),
+    )..repeat();
+
+    // Auto-scroll Timer
+    _startAutoScroll();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _rotationController.dispose();
+    _autoScrollTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startAutoScroll() {
+    _autoScrollTimer?.cancel();
+    _autoScrollTimer = Timer.periodic(const Duration(milliseconds: 2500), (
+      timer,
+    ) {
+      if (_currentPage < _hotItemsCount - 1) {
+        _currentPage++;
+      } else {
+        _currentPage = 0;
+      }
+
+      if (_pageController.hasClients) {
+        _pageController.animateToPage(
+          _currentPage,
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,9 +118,14 @@ class _HomeState extends State<Home> {
                   ),
                 ),
                 const Spacer(),
-                const CircleAvatar(
-                  backgroundImage: AssetImage('icons/adwords.png'),
-                  radius: 35,
+                InkWell(
+                  onTap: () {
+                    Navigator.pushNamed(context, BaseRoute.profile);
+                  },
+                  child: CircleAvatar(
+                    backgroundImage: AssetImage('icons/adwords.png'),
+                    radius: 35,
+                  ),
                 ),
               ],
             ),
@@ -125,29 +181,134 @@ class _HomeState extends State<Home> {
   //New or Hor Product
   Widget buildHotproduct() {
     return SizedBox(
-      height: 170, // Constrains ListView height
+      height: 180,
       width: double.infinity,
-      child: ListView(
-        scrollDirection: Axis.horizontal, // Enable horizontal scrolling
-        children: List.generate(10, (index) {
-          return Padding(
-            padding: const EdgeInsets.only(left: 15),
-            child: Container(
-              width: 350, // Width of each container
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                color: const Color.fromARGB(255, 227, 207, 54), // Color
-              ),
-              child: Center(
-                child: Text(
-                  'Item $index', // Display item number (or use other dynamic content)
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
+      child: PageView.builder(
+        controller: _pageController,
+        onPageChanged: (index) {
+          setState(() {
+            _currentPage = index;
+          });
+          _startAutoScroll(); // Reset timer on manual scroll
+        },
+        itemCount: _hotItemsCount,
+        itemBuilder: (context, index) {
+          return TweenAnimationBuilder(
+            duration: Duration(milliseconds: 400),
+            tween: Tween<double>(begin: 0.9, end: 1.0),
+            builder: (context, double value, child) {
+              return Transform.scale(scale: value, child: child);
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              child: Container(
+                width: 320,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color.fromARGB(255, 227, 207, 54),
+                      const Color.fromARGB(255, 245, 230, 100),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      offset: const Offset(0, 4),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      right: -20,
+                      bottom: -20,
+                      child: Opacity(
+                        opacity: 0.3,
+                        child: Icon(
+                          Icons.flash_on,
+                          size: 150,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                _buildPulsingBadge(),
+                                const SizedBox(height: 8),
+                                Text(
+                                  "Special Edition ${index + 1}",
+                                  style: const TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  "Limited Time Offer",
+                                  style: TextStyle(
+                                    color: Colors.black54,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           );
-        }),
+        },
       ),
+    );
+  }
+
+  Widget _buildPulsingBadge() {
+    return TweenAnimationBuilder(
+      duration: const Duration(seconds: 1),
+      tween: Tween<double>(begin: 0.8, end: 1.2),
+      curve: Curves.easeInOut,
+      builder: (context, double value, child) {
+        return Transform.scale(
+          scale: value,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.redAccent,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              "HOT",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        );
+      },
+      onEnd: () {
+        // This is a simple trick to restart the animation without a controller
+        // However, in a real app, a proper AnimationController is better for infinite loops.
+      },
     );
   }
 
@@ -193,7 +354,13 @@ class _HomeState extends State<Home> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     IconButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.pushNamed(
+                          context,
+                          BaseRoute.filterProduct,
+                          arguments: listTitle[i]['title'],
+                        );
+                      },
                       icon: Image.asset(
                         "icons/${listIcon[i]['icon']}",
                         height: 40,
@@ -364,7 +531,11 @@ class _HomeState extends State<Home> {
                         ),
                         fixedSize: Size(80, 40),
                       ),
-                      onPressed: () {},
+                      onPressed: () {
+                        setState(() {
+                          Navigator.pushNamed(context, BaseRoute.productDetail);
+                        });
+                      },
                       child: Text("Buy"),
                     ),
                   ],

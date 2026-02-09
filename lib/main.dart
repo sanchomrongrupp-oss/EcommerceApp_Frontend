@@ -3,7 +3,7 @@
 import 'package:demo_interview/Views/Screen/favorite.dart';
 import 'package:demo_interview/Views/Screen/home.dart';
 import 'package:demo_interview/Views/Screen/store.dart';
-import 'package:demo_interview/Views/Page/menu.dart';
+import 'package:demo_interview/Views/Screen/menu.dart';
 import 'package:demo_interview/Route/base_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -65,7 +65,6 @@ class MainScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(NavigationController());
     final darkMode = THelperFunctions.isDarkMode(context);
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 255, 255, 255),
@@ -83,8 +82,7 @@ class MainScreen extends StatelessWidget {
               children: [
                 IconButton(
                   onPressed: () {
-                    controller.hasNotification.value =
-                        !controller.hasNotification.value; // Toggle for demo
+                    Navigator.pushNamed(context, BaseRoute.notification);
                   },
                   icon: Image.asset('icons/bell.png', height: 30, width: 30),
                 ),
@@ -131,7 +129,7 @@ class MainScreen extends StatelessWidget {
               label: 'Home',
             ),
             NavigationDestination(
-              icon: Image.asset("icons/heart.png", height: 25, width: 25),
+              icon: Icon(Icons.favorite_border_rounded, size: 25),
               label: 'Favorite',
             ),
             NavigationDestination(
