@@ -61,7 +61,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Icons.payment_outlined,
                     "Payment Methods",
                     "Update your card information",
-                    () {},
+                    () {
+                      setState(() {
+                        Navigator.pushNamed(context, BaseRoute.managePayment);
+                      });
+                    },
                   ),
                   const SizedBox(height: 24),
                   _buildSectionHeader("Support & Privacy"),
@@ -69,19 +73,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Icons.help_outline,
                     "Help Center",
                     "Get help and contact support",
-                    () {},
+                    () {
+                      setState(() {
+                        Navigator.pushNamed(context, BaseRoute.helpCenter);
+                      });
+                    },
                   ),
                   _buildSettingItem(
                     Icons.privacy_tip_outlined,
                     "Privacy Policy",
                     "Read our privacy guidelines",
-                    () {},
+                    () {
+                      setState(() {
+                        Navigator.pushNamed(context, BaseRoute.privacyPolicy);
+                      });
+                    },
                   ),
                   _buildSettingItem(
                     Icons.description_outlined,
                     "Terms of Service",
                     "Our rules and regulations",
-                    () {},
+                    () {
+                      setState(() {
+                        Navigator.pushNamed(context, BaseRoute.termsOfService);
+                      });
+                    },
                   ),
                 ],
               ),
@@ -185,7 +201,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -270,7 +286,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: kMainColor.withOpacity(0.1),
+            color: kMainColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: Colors.black87, size: 24),

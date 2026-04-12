@@ -64,7 +64,7 @@ class _LanguageScreenState extends State<LanguageScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? kMainColor.withOpacity(0.1)
+                            ? kMainColor.withValues(alpha: 0.1)
                             : Colors.white,
                         borderRadius: BorderRadius.circular(15),
                         border: Border.all(
@@ -74,7 +74,7 @@ class _LanguageScreenState extends State<LanguageScreen> {
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                  color: kMainColor.withOpacity(0.2),
+                                  color: kMainColor.withValues(alpha: 0.2),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),

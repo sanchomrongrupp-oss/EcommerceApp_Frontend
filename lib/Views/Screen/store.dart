@@ -1,5 +1,3 @@
-// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
-
 import 'package:flutter/material.dart';
 
 class Store extends StatefulWidget {
@@ -9,36 +7,43 @@ class Store extends StatefulWidget {
   State<Store> createState() => _StoreState();
 }
 
-class _StoreState extends State<Store> {
+class _StoreState extends State<Store> with SingleTickerProviderStateMixin {
   int _selectedIndex = 0;
   final Color kMainColor = const Color.fromARGB(255, 227, 207, 54);
+  late AnimationController _animationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: kMainColor,
-        child: const Icon(Icons.add, color: Colors.black),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(12.0),
+      backgroundColor: const Color(0xFFF8F9FD),
+      body: SafeArea(
         child: Column(
           children: [
+            const SizedBox(height: 8),
             _buildTabSwitcher(),
             Expanded(
-              child: _selectedIndex == 0
-                  ? _buildEmptyState(
-                      Icons.inventory_2_outlined,
-                      "No Active Products",
-                      "Start adding products to your store to see them here.",
-                    )
-                  : _buildEmptyState(
-                      Icons.check_circle_outline,
-                      "No Completed Sales",
-                      "Your completed product sales will appear in this section.",
-                    ),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _selectedIndex == 0
+                    ? _buildActiveProductsView()
+                    : _buildCompletedSalesView(),
+              ),
             ),
           ],
         ),
@@ -48,11 +53,11 @@ class _StoreState extends State<Store> {
 
   Widget _buildTabSwitcher() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(4),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [_buildTabItem(0, "Active"), _buildTabItem(1, "Completed")],
@@ -66,17 +71,18 @@ class _StoreState extends State<Store> {
       child: GestureDetector(
         onTap: () => setState(() => _selectedIndex = index),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: isSelected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       offset: const Offset(0, 2),
-                      blurRadius: 4,
+                      blurRadius: 8,
                     ),
                   ]
                 : [],
@@ -86,6 +92,7 @@ class _StoreState extends State<Store> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontWeight: FontWeight.bold,
+              fontSize: 14,
               color: isSelected ? Colors.black : Colors.grey[600],
             ),
           ),
@@ -94,32 +101,105 @@ class _StoreState extends State<Store> {
     );
   }
 
-  Widget _buildEmptyState(IconData icon, String title, String subtitle) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
+  Widget _buildActiveProductsView() {
+    return _buildEmptyState(
+      Icons.inventory_2_outlined,
+      "No Active Products",
+      "Your store is empty. Add premium products\nto start selling today.",
+      "Add First Product",
+    );
+  }
+
+  Widget _buildCompletedSalesView() {
+    return _buildEmptyState(
+      Icons.verified_outlined,
+      "No Sales Verified",
+      "Completed orders and verified sales\nwill appear in this history.",
+      null,
+    );
+  }
+
+  Widget _buildEmptyState(
+    IconData icon,
+    String title,
+    String subtitle,
+    String? buttonText,
+  ) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TweenAnimationBuilder(
+              duration: const Duration(milliseconds: 800),
+              tween: Tween<double>(begin: 0, end: 1),
+              builder: (context, double value, child) {
+                return Transform.scale(
+                  scale: value,
+                  child: Container(
+                    padding: const EdgeInsets.all(30),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: kMainColor.withValues(alpha: 0.15),
+                          blurRadius: 30,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                    child: Icon(icon, size: 80, color: kMainColor),
+                  ),
+                );
+              },
             ),
-            child: Icon(icon, size: 64, color: kMainColor),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey[600], height: 1.5),
-          ),
-        ],
+            const SizedBox(height: 32),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 16,
+                height: 1.5,
+              ),
+            ),
+            if (buttonText != null) ...[
+              const SizedBox(height: 32),
+              OutlinedButton(
+                onPressed: () {},
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
+                  side: BorderSide(color: kMainColor, width: 2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: Text(
+                  buttonText,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

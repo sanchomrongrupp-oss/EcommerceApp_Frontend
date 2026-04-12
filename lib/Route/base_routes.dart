@@ -1,15 +1,16 @@
 import 'package:demo_interview/Lang/language.dart';
 import 'package:demo_interview/Views/Page/address.dart';
-import 'package:demo_interview/Views/Page/addtocard.dart';
+import 'package:demo_interview/Views/Page/addtocart.dart';
 import 'package:demo_interview/Views/Page/payment.dart';
 import 'package:demo_interview/Views/Screen/menu.dart';
-import 'package:demo_interview/Views/Page/oderhistory.dart';
+import 'package:demo_interview/Views/Page/order_history.dart';
 import 'package:demo_interview/Views/Page/returning.dart';
 import 'package:demo_interview/Views/Page/wishlist.dart';
 import 'package:demo_interview/Views/Page/changepass.dart';
-import 'package:demo_interview/Views/Page/notification.dart';
-import 'package:demo_interview/Views/Page/notification_detail.dart';
 import 'package:demo_interview/Views/Page/managepayment.dart';
+import 'package:demo_interview/Views/Page/helpcenter.dart';
+import 'package:demo_interview/Views/Page/privacypolicy.dart';
+import 'package:demo_interview/Views/Page/termsofservice.dart';
 import 'package:demo_interview/Views/Product_detail/product_detail.dart';
 import 'package:flutter/material.dart';
 import 'package:demo_interview/main.dart'; // Import for MainScreen
@@ -24,7 +25,8 @@ import 'package:demo_interview/Views/Page/buy.dart'; // Buyproduct
 import 'package:demo_interview/Views/Page/profile.dart'; // profile_screen
 import 'package:demo_interview/Views/Page/editprofile.dart'; // editprofile_screen
 import 'package:demo_interview/Views/Page/termsconditions.dart'; // termsconditions_screen
-import 'package:demo_interview/Views/Page/filtterproduct.dart';
+import 'package:demo_interview/Views/Page/filter_product.dart';
+import 'package:demo_interview/Views/Page/signuploadprofile.dart';
 
 class BaseRoute {
   static const String home = '/home';
@@ -48,11 +50,15 @@ class BaseRoute {
   static const String changepass = '/changepass';
   static const String language = '/language';
   static const String filterProduct = '/filter_product';
-  static const String addToCard = '/add_to_card';
+  static const String addToCart = '/add_to_cart';
   static const String payment = '/payment';
   static const String notification = '/notification';
   static const String notificationDetail = '/notificationDetail';
   static const String managePayment = '/managePayment';
+  static const String helpCenter = '/helpCenter';
+  static const String privacyPolicy = '/privacyPolicy';
+  static const String termsOfService = '/termsOfService';
+  static const String signUploadProfile = '/sign_upload_profile';
 
   static Map<String, WidgetBuilder> routes = {
     home: (context) => const Home(),
@@ -76,14 +82,14 @@ class BaseRoute {
     changepass: (context) => const ChangePasswordScreen(),
     language: (context) => const LanguageScreen(),
     filterProduct: (context) => const FilterProduct(),
-    addToCard: (context) => const AddToCard(),
+    addToCart: (context) => const AddToCart(),
     payment: (context) => const Payment(),
-    notification: (context) => const NotificationScreen(),
-    notificationDetail: (context) {
-      final notification =
-          ModalRoute.of(context)!.settings.arguments as NotificationModel;
-      return NotificationDetailScreen(notification: notification);
-    },
     managePayment: (context) => const ManagePayment(),
+    helpCenter: (context) => const HelpCenter(),
+    privacyPolicy: (context) => const PrivacyPolicy(),
+    termsOfService: (context) => const TermsOfService(),
+    signUploadProfile: (context) => SignUploadProfile(
+      userData: ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?,
+    ),
   };
 }

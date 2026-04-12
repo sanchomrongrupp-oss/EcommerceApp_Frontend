@@ -5,6 +5,7 @@ import 'package:demo_interview/Views/Screen/home.dart';
 import 'package:demo_interview/Views/Screen/store.dart';
 import 'package:demo_interview/Views/Screen/menu.dart';
 import 'package:demo_interview/Route/base_routes.dart';
+import 'package:demo_interview/Controllers/wishlist_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -60,6 +61,7 @@ class MyApp extends StatelessWidget {
 
 class MainScreen extends StatelessWidget {
   final NavigationController controller = Get.put(NavigationController());
+  final WishlistController wishlistController = Get.put(WishlistController());
 
   MainScreen({super.key});
 
@@ -78,31 +80,16 @@ class MainScreen extends StatelessWidget {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 15),
-            child: Stack(
+            child: Row(
               children: [
                 IconButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, BaseRoute.notification);
+                    Navigator.pushNamed(context, BaseRoute.addToCart);
                   },
-                  icon: Image.asset('icons/bell.png', height: 30, width: 30),
-                ),
-                Positioned(
-                  right: 11,
-                  top: 11,
-                  child: Obx(
-                    () => controller.hasNotification.value
-                        ? Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              color: const Color.fromARGB(255, 255, 17, 0),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            constraints: const BoxConstraints(
-                              minWidth: 12,
-                              minHeight: 12,
-                            ),
-                          )
-                        : const SizedBox(),
+                  icon: Image.asset(
+                    "icons/add_card.png",
+                    height: 30,
+                    width: 30,
                   ),
                 ),
               ],

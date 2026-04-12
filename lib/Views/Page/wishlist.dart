@@ -1,4 +1,10 @@
+import 'dart:convert';
+import 'package:demo_interview/Base_Url/base_url.dart';
+import 'package:demo_interview/Route/base_routes.dart';
+import 'package:demo_interview/Controllers/wishlist_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
 
 class WishlistScreen extends StatefulWidget {
   const WishlistScreen({super.key});
@@ -8,37 +14,12 @@ class WishlistScreen extends StatefulWidget {
 }
 
 class _WishlistScreenState extends State<WishlistScreen> {
-  // Mock data for demonstration
-  final List<Map<String, dynamic>> _wishlistItems = [
-    {
-      "name": "Nike Air Zoom",
-      "price": "\$150.00",
-      "rating": 4.8,
-      "image":
-          "https://img.freepik.com/free-photo/running-shoes-white-background_10541-635.jpg",
-    },
-    {
-      "name": "Smart Watch v2",
-      "price": "\$199.99",
-      "rating": 4.5,
-      "image":
-          "https://img.freepik.com/free-photo/smartwatch-screen-digital-device_53876-96024.jpg",
-    },
-    {
-      "name": "Bluetooth Headphones",
-      "price": "\$89.00",
-      "rating": 4.2,
-      "image":
-          "https://img.freepik.com/free-photo/headphones-isolated_1203-3453.jpg",
-    },
-    {
-      "name": "Leather Backpack",
-      "price": "\$120.00",
-      "rating": 4.7,
-      "image":
-          "https://img.freepik.com/free-photo/brown-leather-backpack_1203-3453.jpg",
-    },
-  ];
+  final WishlistController wishlistController = Get.find();
+
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,39 +27,33 @@ class _WishlistScreenState extends State<WishlistScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text(
-          "My Wishlist",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: kMainColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.shopping_cart_outlined, color: Colors.black),
-          ),
-        ],
-      ),
-      body: _wishlistItems.isEmpty
-          ? _buildEmptyState()
-          : GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.7,
-                crossAxisSpacing: 15,
-                mainAxisSpacing: 15,
-              ),
-              itemCount: _wishlistItems.length,
-              itemBuilder: (context, index) {
-                return _buildWishlistItem(_wishlistItems[index], kMainColor);
-              },
-            ),
+      body: Obx(() {
+        if (wishlistController.isLoading.value) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return RefreshIndicator(
+          onRefresh: wishlistController.fetchWishlist,
+          child: wishlistController.wishlistItems.isEmpty
+              ? _buildEmptyState()
+              : GridView.builder(
+                  padding: const EdgeInsets.all(16),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 0.7,
+                    crossAxisSpacing: 15,
+                    mainAxisSpacing: 15,
+                  ),
+                  itemCount: wishlistController.wishlistItems.length,
+                  itemBuilder: (context, index) {
+                    return _buildWishlistItem(
+                      wishlistController.wishlistItems[index],
+                      kMainColor,
+                      index,
+                    );
+                  },
+                ),
+        );
+      }),
     );
   }
 
@@ -115,14 +90,25 @@ class _WishlistScreenState extends State<WishlistScreen> {
     );
   }
 
-  Widget _buildWishlistItem(Map<String, dynamic> item, Color mainColor) {
+  Widget _buildWishlistItem(dynamic item, Color mainColor, int index) {
+    final String title =
+        item['title']?.toString() ?? item['name']?.toString() ?? 'Product Name';
+    final String price =
+        item['price']?.toString() ?? item['base_price']?.toString() ?? '0.00';
+    final String? id = item['id']?.toString() ?? item['_id']?.toString();
+    final String? imageUrl =
+        item['image']?.toString() ?? item['image_url']?.toString();
+    final String fullImageUrl = BaseUrl.getFullImageUrl(imageUrl);
+    final double rating =
+        double.tryParse(item['rating']?.toString() ?? "0.0") ?? 0.0;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -146,12 +132,18 @@ class _WishlistScreenState extends State<WishlistScreen> {
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(20),
                     ),
-                    child: Image.network(
-                      item['image'],
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.image, size: 50, color: Colors.grey),
-                    ),
+                    child: fullImageUrl.isNotEmpty
+                        ? Image.network(
+                            fullImageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(
+                                  Icons.image,
+                                  size: 50,
+                                  color: Colors.grey,
+                                ),
+                          )
+                        : const Icon(Icons.image, size: 50, color: Colors.grey),
                   ),
                 ),
               ),
@@ -161,7 +153,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item['name'],
+                      title,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
@@ -179,7 +171,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          item['rating'].toString(),
+                          rating.toString(),
                           style: const TextStyle(
                             fontSize: 12,
                             color: Colors.grey,
@@ -192,7 +184,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          item['price'],
+                          "\$$price",
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -200,7 +192,13 @@ class _WishlistScreenState extends State<WishlistScreen> {
                           ),
                         ),
                         GestureDetector(
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              BaseRoute.addToCart,
+                              arguments: item,
+                            );
+                          },
                           child: Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
@@ -226,9 +224,9 @@ class _WishlistScreenState extends State<WishlistScreen> {
             right: 10,
             child: GestureDetector(
               onTap: () {
-                setState(() {
-                  _wishlistItems.remove(item);
-                });
+                if (id != null) {
+                  wishlistController.removeFromWishlist(id, index);
+                }
               },
               child: Container(
                 padding: const EdgeInsets.all(6),

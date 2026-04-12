@@ -48,8 +48,6 @@ class _MenuState extends State<Menu> {
 
   @override
   Widget build(BuildContext context) {
-    const kMainColor = Color.fromARGB(255, 227, 207, 54);
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
@@ -60,7 +58,7 @@ class _MenuState extends State<Menu> {
               name: "Rong",
               userId: "00000001",
               imagePath: 'icons/user.png',
-              backgroundColor: kMainColor,
+              backgroundColor: Colors.black,
               onTap: () {
                 Navigator.pushNamed(context, BaseRoute.profile);
               },
@@ -110,9 +108,9 @@ class _MenuState extends State<Menu> {
             _SectionHeader(title: "Settings & Help"),
             _MenuTile(
               icon: Icons.contact_support_outlined,
-              title: "Terms & Conditions",
+              title: "Help Center",
               onTap: () {
-                Navigator.pushNamed(context, BaseRoute.termsConditions);
+                Navigator.pushNamed(context, BaseRoute.helpCenter);
               },
             ),
             _MenuTile(
@@ -134,6 +132,20 @@ class _MenuState extends State<Menu> {
               title: "Notifications",
               onTap: () {
                 Navigator.pushNamed(context, BaseRoute.notification);
+              },
+            ),
+            _MenuTile(
+              icon: Icons.contact_support_outlined,
+              title: "Privacy Policy",
+              onTap: () {
+                Navigator.pushNamed(context, BaseRoute.privacyPolicy);
+              },
+            ),
+            _MenuTile(
+              icon: Icons.contact_support_outlined,
+              title: "Terms of Service",
+              onTap: () {
+                Navigator.pushNamed(context, BaseRoute.termsOfService);
               },
             ),
             _MenuTile(
@@ -175,7 +187,7 @@ class _ProfileCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             offset: const Offset(0, 4),
             blurRadius: 12,
           ),
@@ -187,18 +199,23 @@ class _ProfileCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(24),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.only(
+              left: 16.0,
+              right: 16,
+              top: 32,
+              bottom: 32,
+            ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
-                    color: backgroundColor.withOpacity(0.5),
+                    color: backgroundColor.withValues(alpha: 0.5),
                     shape: BoxShape.circle,
                   ),
                   child: CircleAvatar(
                     backgroundImage: AssetImage(imagePath),
-                    radius: 40,
+                    radius: 50,
                     backgroundColor: Colors.white,
                   ),
                 ),
@@ -274,8 +291,8 @@ class _MenuTile extends StatelessWidget {
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: isDestructive
-                        ? Colors.red.withOpacity(0.1)
-                        : kMainColor.withOpacity(0.1),
+                        ? Colors.red.withValues(alpha: 0.1)
+                        : kMainColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(

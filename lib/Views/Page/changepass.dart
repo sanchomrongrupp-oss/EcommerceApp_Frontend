@@ -143,8 +143,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                                 ),
                               ),
                               validator: (value) {
-                                if (value!.length < 6)
+                                if (value!.length < 6) {
                                   return "Min 6 characters";
+                                }
                                 return null;
                               },
                             ),

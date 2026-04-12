@@ -1,5 +1,9 @@
 import 'package:demo_interview/Route/base_routes.dart';
+import 'package:demo_interview/Base_Url/base_url.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class Payment extends StatefulWidget {
   const Payment({super.key});
@@ -12,19 +16,29 @@ class _PaymentState extends State<Payment> {
   final Color kMainColor = Colors.black;
   int _selectedPaymentIndex = 0;
   String _deliveryAddress = "123 Premium St, Modern City, 12345";
+  double _price = 0.0;
+  int _qty = 1;
+  String _color = "";
+  bool _isProcessing = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null) {
+      _price = args['price'] ?? 0.0;
+      _qty = args['qty'] ?? 1;
+      _color = args['color']?.toString() ?? "";
+    }
+  }
 
   final List<Map<String, dynamic>> _paymentMethods = [
     {
-      "name": "Credit Card",
-      "icon": Icons.credit_card,
-      "subtitle": "**** **** **** 4242",
+      "name": "ABA Payway",
+      "icon": Icons.qr_code_scanner,
+      "subtitle": "Pay securely with ABA",
     },
-    {
-      "name": "PayPal",
-      "icon": Icons.account_balance_wallet,
-      "subtitle": "paypal@example.com",
-    },
-    {"name": "Apple Pay", "icon": Icons.apple, "subtitle": "Connected"},
     {
       "name": "Cash on Delivery",
       "icon": Icons.money,
@@ -35,7 +49,7 @@ class _PaymentState extends State<Payment> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color.fromARGB(255, 227, 207, 54),
+      backgroundColor: Color.fromARGB(255, 255, 255, 255),
       appBar: AppBar(
         backgroundColor: Color.fromARGB(255, 227, 207, 54),
         elevation: 0,
@@ -102,7 +116,7 @@ class _PaymentState extends State<Payment> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: kMainColor.withOpacity(0.1),
+              color: kMainColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.location_on, color: kMainColor),
@@ -153,7 +167,7 @@ class _PaymentState extends State<Payment> {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isSelected ? Colors.grey[300] : Colors.white,
+              color: isSelected ? Colors.amber[200] : Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isSelected ? Colors.grey[300]! : Colors.grey[200]!,
@@ -196,6 +210,7 @@ class _PaymentState extends State<Payment> {
   }
 
   Widget _buildOrderSummary() {
+    final double subtotal = _price * _qty;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -204,16 +219,22 @@ class _PaymentState extends State<Payment> {
       ),
       child: Column(
         children: [
-          _buildSummaryRow("Subtotal", "\$299.00"),
+          _buildSummaryRow("Price / Unit", "\$${_price.toStringAsFixed(2)}"),
           const SizedBox(height: 8),
-          _buildSummaryRow("Shipping", "\$10.00"),
+          _buildSummaryRow("QTY", "$_qty"),
           const SizedBox(height: 8),
-          _buildSummaryRow("Tax (5%)", "\$15.45"),
+          if (_color.isNotEmpty) _buildSummaryRow("Color", _color),
+          const SizedBox(height: 8),
+          _buildSummaryRow("Subtotal", "\$${subtotal.toStringAsFixed(2)}"),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Divider(),
           ),
-          _buildSummaryRow("Total Amount", "\$324.45", isTotal: true),
+          _buildSummaryRow(
+            "Total Amount",
+            "\$${subtotal.toStringAsFixed(2)}",
+            isTotal: true,
+          ),
         ],
       ),
     );
@@ -282,7 +303,7 @@ class _PaymentState extends State<Payment> {
         color: Color.fromARGB(255, 227, 207, 54),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             offset: const Offset(0, -4),
             blurRadius: 10,
           ),
@@ -290,10 +311,17 @@ class _PaymentState extends State<Payment> {
       ),
       child: SafeArea(
         child: ElevatedButton(
-          onPressed: () {
-            // Success BottomSheet or Navigation
-            _showSuccessDialog();
-          },
+          onPressed: _isProcessing
+              ? null
+              : () async {
+                  final selectedMethod =
+                      _paymentMethods[_selectedPaymentIndex]['name'];
+                  if (selectedMethod == "ABA Payway") {
+                    await _handleAbaPayment();
+                  } else {
+                    _showSuccessDialog();
+                  }
+                },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,
             foregroundColor: Colors.white,
@@ -303,13 +331,118 @@ class _PaymentState extends State<Payment> {
             ),
             elevation: 0,
           ),
-          child: const Text(
-            "Payment",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          child: _isProcessing
+              ? const SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : const Text(
+                  "Payment",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
         ),
       ),
     );
+  }
+
+  Future<void> _handleAbaPayment() async {
+    setState(() => _isProcessing = true);
+
+    try {
+      final String? token = await BaseUrl.getToken();
+      final double totalAmount = _price * _qty;
+
+      if (totalAmount <= 0) {
+        throw 'Invalid total amount (\$totalAmount). Please check product price and quantity.';
+      }
+
+      // 🚀 Debug log full request
+      debugPrint("🚀 Calling: ${BaseUrl.paywayCreatePaymentUrl}");
+      debugPrint("📦 Payload: amount: $totalAmount");
+
+      final response = await http.post(
+        Uri.parse(BaseUrl.paywayCreatePaymentUrl),
+        headers: {
+          'Authorization': 'Bearer ${token ?? ""}',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'amount': totalAmount,
+          'firstName': 'User',
+          'lastName': 'Demo',
+        }),
+      );
+
+      // 📥 Debug log response
+      debugPrint("📥 Status: ${response.statusCode}");
+      debugPrint("📄 Body: ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final jsonResponse = jsonDecode(response.body);
+        final data = jsonResponse['data'];
+
+        if (data == null) throw 'Server success but no data';
+
+        final String hash = data['hash'] ?? "";
+        final String transactionId = data['tran_id']?.toString() ?? "";
+        final String amount = data['amount']?.toString() ?? "";
+        final String reqTime = data['req_time']?.toString() ?? "";
+        final String merchantId = data['merchant_id']?.toString() ?? "";
+        final String returnUrl = data['return_url'] ?? "";
+        final String continueSuccessUrl = data['continue_success_url'] ?? "";
+
+        if (hash.isEmpty || transactionId.isEmpty)
+          throw 'Missing payment params';
+
+        final Map<String, String> redirectParams = {
+          'req_time': reqTime,
+          'tran_id': transactionId,
+          'amount': amount,
+          'hash': hash,
+          'firstName': 'User',
+          'lastName': 'Demo',
+          'merchant_id': merchantId,
+          'return_url': returnUrl,
+          'continue_success_url': continueSuccessUrl,
+        };
+
+        if (data['items'] != null) {
+          redirectParams['items'] = data['items'].toString();
+        }
+
+        final Uri checkoutUri = Uri.parse(
+          BaseUrl.paywayRenderCheckoutUrl,
+        ).replace(queryParameters: redirectParams);
+
+        if (await canLaunchUrl(checkoutUri)) {
+          await launchUrl(checkoutUri, mode: LaunchMode.externalApplication);
+        } else {
+          throw 'Could not launch payment gateway. Please check your internet connection.';
+        }
+      } else {
+        String msg = 'Payment error (${response.statusCode})';
+        try {
+          final error = jsonDecode(response.body);
+          msg = error['message'] ?? msg;
+        } catch (_) {}
+        throw msg;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
   }
 
   void _showSuccessDialog() {
@@ -327,7 +460,7 @@ class _PaymentState extends State<Payment> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
+                color: Colors.green.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(

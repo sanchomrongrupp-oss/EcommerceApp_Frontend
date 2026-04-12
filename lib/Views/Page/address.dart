@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:sliding_up_panel/sliding_up_panel.dart';
 
 class AddressScreen extends StatefulWidget {
   const AddressScreen({super.key});
@@ -13,233 +12,255 @@ class AddressScreen extends StatefulWidget {
 
 class _AddressScreenState extends State<AddressScreen> {
   GoogleMapController? _mapController;
-  LatLng _currentPosition = const LatLng(
+  LatLng _selectedLocation = const LatLng(
     13.7563,
     100.5018,
-  ); // Default to Bangkok
-  String _address = "Fetching location...";
-
-  final PanelController _panelController = PanelController();
+  ); // Default: Bangkok
+  final TextEditingController _addressController = TextEditingController();
+  Set<Marker> _markers = {};
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _determinePosition();
+    // Initialize marker at default location
+    _markers.add(
+      Marker(
+        markerId: const MarkerId("selected_location"),
+        position: _selectedLocation,
+      ),
+    );
   }
 
-  Future<void> _determinePosition() async {
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    _addressController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _getCurrentLocation() async {
     bool serviceEnabled;
     LocationPermission permission;
 
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      setState(() => _address = "Location services are disabled.");
-      return;
-    }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        setState(() => _address = "Location permissions are denied.");
-        return;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      setState(() => _address = "Location permissions are permanently denied.");
-      return;
-    }
-
-    final position = await Geolocator.getCurrentPosition();
-    _updatePosition(LatLng(position.latitude, position.longitude));
-  }
-
-  void _updatePosition(LatLng position) async {
     setState(() {
-      _currentPosition = position;
+      _isLoading = true;
     });
 
-    _mapController?.animateCamera(CameraUpdate.newLatLng(position));
+    try {
+      serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return Future.error('Location services are disabled.');
+      }
 
+      permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          return Future.error('Location permissions are denied');
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        return Future.error('Location permissions are permanently denied.');
+      }
+
+      Position position = await Geolocator.getCurrentPosition();
+      LatLng currentLatLng = LatLng(position.latitude, position.longitude);
+
+      _updateLocation(currentLatLng);
+      _mapController?.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(target: currentLatLng, zoom: 15),
+        ),
+      );
+    } catch (e) {
+      debugPrint("Error getting location: $e");
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _getAddressFromLatLng(LatLng position) async {
     try {
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
       );
+
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks[0];
+        String address =
+            "${place.street}, ${place.subLocality}, ${place.locality}, ${place.postalCode}, ${place.country}";
         setState(() {
-          _address =
-              "${place.street}, ${place.subLocality}, ${place.locality}, ${place.postalCode}";
+          _addressController.text = address;
         });
       }
     } catch (e) {
-      setState(() => _address = "Could not find address.");
+      debugPrint("Error getting address: $e");
+      setState(() {
+        _addressController.text =
+            "Selected: ${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}";
+      });
     }
+  }
+
+  void _updateLocation(LatLng newLocation) {
+    setState(() {
+      _selectedLocation = newLocation;
+      _markers = {
+        Marker(
+          markerId: const MarkerId("selected_location"),
+          position: newLocation,
+        ),
+      };
+    });
+    _getAddressFromLatLng(newLocation);
   }
 
   @override
   Widget build(BuildContext context) {
-    const kMainColor = Color.fromARGB(255, 227, 207, 54);
-
     return Scaffold(
-      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text(
           "Select Location",
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.white.withOpacity(0.8),
+        backgroundColor: const Color.fromARGB(255, 227, 207, 54),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SlidingUpPanel(
-        controller: _panelController,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
-        ),
-        parallaxEnabled: true,
-        parallaxOffset: .5,
-        panel: _buildAddressDetails(kMainColor),
-        body: Stack(
-          children: [
-            GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: _currentPosition,
-                zoom: 15,
-              ),
-              onMapCreated: (controller) => _mapController = controller,
-              onCameraMove: (position) => _currentPosition = position.target,
-              onCameraIdle: () => _updatePosition(_currentPosition),
-              myLocationEnabled: true,
-              myLocationButtonEnabled: false,
-              zoomControlsEnabled: false,
-              padding: const EdgeInsets.only(bottom: 200),
-            ),
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.only(bottom: 200),
-                child: Icon(Icons.location_on, color: Colors.red, size: 50),
-              ),
-            ),
-            Positioned(
-              right: 20,
-              bottom: 280,
-              child: FloatingActionButton(
-                backgroundColor: Colors.white,
-                onPressed: _determinePosition,
-                child: const Icon(Icons.my_location, color: Colors.black),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAddressDetails(Color kMainColor) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 50,
-              height: 5,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            "Select Delivery Address",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 15),
-          Row(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
             children: [
-              const Icon(Icons.location_on, color: Colors.red),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  _address,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.black87,
-                    fontWeight: FontWeight.w500,
+              Container(
+                height: 300,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade300),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: GoogleMap(
+                    mapType: MapType.normal,
+                    initialCameraPosition: CameraPosition(
+                      target: _selectedLocation,
+                      zoom: 12,
+                    ),
+                    onMapCreated: (controller) {
+                      _mapController = controller;
+                    },
+                    onTap: _updateLocation,
+                    markers: _markers,
+                    myLocationEnabled: true,
+                    myLocationButtonEnabled: false,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Selected Address",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _addressController,
+                    maxLines: 2,
+                    readOnly: true,
+                    decoration: InputDecoration(
+                      hintText: "Location not selected",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: Colors.grey),
+                      ),
+                      suffixIcon: const Icon(
+                        Icons.location_on,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color.fromARGB(255, 227, 207, 54),
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: _isLoading ? null : _getCurrentLocation,
+                    icon: _isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.black,
+                            ),
+                          )
+                        : const Icon(Icons.my_location),
+                    label: const Text("Use Current Location"),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromARGB(255, 227, 207, 54),
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: _addressController.text.isEmpty
+                      ? null
+                      : () {
+                          // TODO: Handle confirming address
+                          Navigator.pop(context, {
+                            'address': _addressController.text,
+                            'latlng': _selectedLocation,
+                          });
+                        },
+                  child: const Text(
+                    "Confirm Address",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 25),
-          const TextField(
-            decoration: InputDecoration(
-              hintText: "Flat / House No. / Floor",
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(15)),
-              ),
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
-            ),
-          ),
-          const SizedBox(height: 15),
-          const TextField(
-            decoration: InputDecoration(
-              hintText: "Nearby Landmark (Optional)",
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(15)),
-              ),
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
-            ),
-          ),
-          const Spacer(),
-          SizedBox(
-            width: double.infinity,
-            height: 55,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kMainColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                elevation: 0,
-              ),
-              onPressed: () {
-                // Save and pop
-                Navigator.pop(context, _address);
-              },
-              child: const Text(
-                "Confirm Location",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

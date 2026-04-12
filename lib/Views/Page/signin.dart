@@ -1,10 +1,12 @@
 // ignore_for_file: prefer_const_constructors
 
 import 'package:flutter/material.dart';
-import 'package:demo_interview/main.dart';
 import 'package:demo_interview/Views/Page/signup.dart';
 import 'package:demo_interview/Route/base_routes.dart';
 import 'package:demo_interview/constant.dart';
+import 'package:demo_interview/Base_Url/base_url.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class Signin extends StatefulWidget {
   const Signin({super.key});
@@ -23,14 +25,74 @@ class _SigninState extends State<Signin> {
   bool _loading = false;
 
   Future<void> _signinUser() async {
-    await Future.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
+    try {
+      final response = await http.post(
+        Uri.parse(BaseUrl.loginUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'email': _emailController.text.trim(),
+          'password': _passwordController.text,
+        }),
+      );
 
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      BaseRoute.dashboard,
-      (route) => false,
-    );
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        debugPrint("Login Response: $data");
+
+        dynamic tokenValue =
+            data['access_token'] ??
+            (data['data'] != null ? data['data']['access_token'] : null) ??
+            data['token'] ??
+            (data['data'] != null ? data['data']['token'] : null);
+
+        if (tokenValue == null) {
+          throw Exception('Token not found in response: ${response.body}');
+        }
+
+        final String token = tokenValue.toString();
+
+        await BaseUrl.saveToken(token);
+
+        setState(() => _loading = false);
+
+        if (mounted) {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            BaseRoute.dashboard,
+            (route) => false,
+          );
+        }
+      } else {
+        setState(() => _loading = false);
+
+        String errorMessage = 'Login failed';
+        try {
+          final data = jsonDecode(response.body);
+          errorMessage = data['message'] ?? errorMessage;
+        } catch (e) {
+          errorMessage = 'Server error (${response.statusCode})';
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(errorMessage)));
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('An error occurred: $e')));
+      }
+    }
   }
 
   @override

@@ -102,7 +102,7 @@ class _ManagePaymentState extends State<ManagePayment> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
-            ..._methods.map((method) => _buildGlassCard(method)).toList(),
+            ..._methods.map((method) => _buildGlassCard(method)),
             const SizedBox(height: 30),
             const Text(
               "Other Methods",
@@ -163,7 +163,7 @@ class _ManagePaymentState extends State<ManagePayment> {
             ),
             boxShadow: [
               BoxShadow(
-                color: cardColors.first.withOpacity(0.3),
+                color: cardColors.first.withValues(alpha: 0.3),
                 blurRadius: 15,
                 offset: const Offset(0, 10),
               ),
@@ -177,7 +177,7 @@ class _ManagePaymentState extends State<ManagePayment> {
                 top: -50,
                 child: CircleAvatar(
                   radius: 100,
-                  backgroundColor: Colors.white.withOpacity(0.1),
+                  backgroundColor: Colors.white.withValues(alpha: 0.1),
                 ),
               ),
               Padding(
@@ -204,7 +204,7 @@ class _ManagePaymentState extends State<ManagePayment> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Text(
@@ -238,7 +238,7 @@ class _ManagePaymentState extends State<ManagePayment> {
                             Text(
                               "CARD HOLDER",
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.6),
+                                color: Colors.white.withValues(alpha: 0.6),
                                 fontSize: 10,
                               ),
                             ),
@@ -257,7 +257,7 @@ class _ManagePaymentState extends State<ManagePayment> {
                             Text(
                               "EXPIRES",
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.6),
+                                color: Colors.white.withValues(alpha: 0.6),
                                 fontSize: 10,
                               ),
                             ),
@@ -299,7 +299,7 @@ class _ManagePaymentState extends State<ManagePayment> {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.1),
+            color: iconColor.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: iconColor),

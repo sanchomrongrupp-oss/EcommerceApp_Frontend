@@ -1,8 +1,12 @@
 // ignore_for_file: prefer_const_constructors
 
+import 'package:demo_interview/main.dart';
 import 'package:flutter/material.dart';
-import 'package:demo_interview/Views/Page/signin.dart';
 import 'package:demo_interview/constant.dart';
+import 'package:demo_interview/Base_Url/base_url.dart';
+import 'package:demo_interview/Route/base_routes.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class Signup extends StatefulWidget {
   const Signup({super.key});
@@ -18,6 +22,7 @@ class _SignupState extends State<Signup> {
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
@@ -28,14 +33,98 @@ class _SignupState extends State<Signup> {
   bool _obscureConfirmPassword = true;
 
   Future<void> _registerUser() async {
-    await Future.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
+    try {
+      final dateText = _dobController.text.trim();
 
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const Signin()),
-      (route) => false,
-    );
+      final response = await http.post(
+        Uri.parse(BaseUrl.registerUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'first_name': _firstNameController.text.trim(),
+          'last_name': _lastNameController.text.trim(),
+          'gender': _selectedGender,
+          'date_of_birth': dateText,
+          'email': _emailController.text.trim(),
+          'phone': _phoneController.text.trim(),
+          'password': _passwordController.text,
+        }),
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        debugPrint("Signup Success: $data");
+
+        // 🔥 Extract token if available (to auto-login the user for the next step)
+        dynamic tokenValue =
+            data['access_token'] ??
+            (data['data'] != null ? data['data']['access_token'] : null) ??
+            data['token'] ??
+            (data['data'] != null ? data['data']['token'] : null);
+
+        if (tokenValue != null) {
+          await BaseUrl.saveToken(tokenValue.toString());
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Account created successfully!"),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            BaseRoute.signUploadProfile,
+            (route) => false,
+            arguments: data,
+          );
+        }
+      } else {
+        setState(() => _loading = false);
+
+        String errorMessage = 'Registration failed';
+        if (response.statusCode == 404) {
+          errorMessage =
+              "The requested endpoint was not found (404). Please check your API URL.";
+        } else {
+          try {
+            final data = jsonDecode(response.body);
+            if (data['errors'] != null) {
+              final Map<String, dynamic> errors = data['errors'];
+              errorMessage = errors.values.first[0].toString();
+            } else {
+              errorMessage = data['message'] ?? errorMessage;
+            }
+          } catch (e) {
+            errorMessage = 'Server error (${response.statusCode})';
+          }
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      debugPrint("Signup Error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('An error occurred: $e')));
+      }
+    }
   }
 
   @override
@@ -54,7 +143,7 @@ class _SignupState extends State<Signup> {
                   const SizedBox(height: 20),
 
                   const Text(
-                    'CREATE ACCOUNT',
+                    'SIGN UP YOUR ACCOUNT',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
                   ),
@@ -121,7 +210,7 @@ class _SignupState extends State<Signup> {
                       if (date != null) {
                         setState(() {
                           _dobController.text =
-                              "${date.day}/${date.month}/${date.year}";
+                              "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
                         });
                       }
                     },
@@ -141,6 +230,23 @@ class _SignupState extends State<Signup> {
                     validator: (value) {
                       if (value!.isEmpty) return "Email required";
                       if (!value.contains('@')) return "Invalid email";
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  /// Phone
+                  TextFormField(
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: kInputDecoration(
+                      hintText: "Phone",
+                      prefixIcon: Icon(Icons.phone),
+                    ),
+                    validator: (value) {
+                      if (value!.isEmpty) return "Phone required";
+                      if (!value.contains('0')) return "Invalid phone";
                       return null;
                     },
                   ),
@@ -230,7 +336,7 @@ class _SignupState extends State<Signup> {
                         onPressed: () {
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(builder: (_) => const Signin()),
+                            MaterialPageRoute(builder: (_) => MainScreen()),
                           );
                         },
                         child: const Text("Sign in"),
