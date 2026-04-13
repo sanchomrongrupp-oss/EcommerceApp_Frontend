@@ -35,7 +35,7 @@ class CartController extends GetxController {
       if (token == null) return;
 
       final response = await http.get(
-        Uri.parse("${BaseUrl.cartUrl}/user/$userId"),
+        Uri.parse(BaseUrl.cartUrl),
         headers: {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',

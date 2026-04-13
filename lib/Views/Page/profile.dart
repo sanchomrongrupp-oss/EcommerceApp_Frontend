@@ -44,7 +44,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildOrderBoard(),
                     const SizedBox(height: 24),
                     const _SectionHeader(title: "Account Settings"),
                     _buildSettingItem(
@@ -238,55 +237,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onPressed: () => Navigator.pop(context),
       ),
       centerTitle: true,
-    );
-  }
-
-  Widget _buildOrderBoard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                "My Orders",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, BaseRoute.orderHistory);
-                },
-                child: const Text(
-                  "View All",
-                  style: TextStyle(color: Colors.blue),
-                ),
-              ),
-            ],
-          ),
-          const Divider(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildOrderStatusItem(Icons.payment, "Pending"),
-              _buildOrderStatusItem(Icons.local_shipping, "Shipping"),
-              _buildOrderStatusItem(Icons.inventory_2, "Received"),
-              _buildOrderStatusItem(Icons.star_outline, "Review"),
-            ],
-          ),
-        ],
-      ),
     );
   }
 

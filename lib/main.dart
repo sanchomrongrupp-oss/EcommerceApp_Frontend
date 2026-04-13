@@ -74,7 +74,7 @@ class MainScreen extends StatelessWidget {
   Future<void> _initData() async {
     // 1. Fetch Profile first (other controllers depend on user ID)
     await profileController.fetchProfile();
-    
+
     // 2. Fetch Dependent Data
     await Future.wait([
       cartController.fetchCart(),
@@ -142,7 +142,7 @@ class MainScreen extends StatelessWidget {
                 height: 25,
                 width: 25,
               ),
-              label: 'Store',
+              label: 'Cart',
             ),
             NavigationDestination(
               icon: Image.asset("icons/menu.png", height: 25, width: 25),
