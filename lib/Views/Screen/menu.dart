@@ -1,9 +1,12 @@
-// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables, camel_case_types
-
+import 'package:demo_interview/Controllers/profile_controller.dart';
+import 'package:demo_interview/Controllers/cart_controller.dart';
+import 'package:demo_interview/Controllers/wishlist_controller.dart';
+import 'package:demo_interview/Base_Url/base_url.dart';
 import 'package:demo_interview/Route/base_routes.dart';
 import 'package:demo_interview/main.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:shimmer/shimmer.dart';
 
 class Menu extends StatefulWidget {
   const Menu({super.key});
@@ -13,6 +16,14 @@ class Menu extends StatefulWidget {
 }
 
 class _MenuState extends State<Menu> {
+  final ProfileController profileController = Get.find();
+
+  @override
+  void initState() {
+    super.initState();
+    profileController.fetchProfile();
+  }
+
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -29,14 +40,24 @@ class _MenuState extends State<Menu> {
               child: const Text("Cancel"),
             ),
             TextButton(
-              onPressed: () {
-                final NavigationController controller = Get.find();
-                controller.selectedIndex.value = 0;
+              onPressed: () async {
+                final NavigationController navigationController = Get.find();
+                navigationController.selectedIndex.value = 0;
 
-                Navigator.of(
-                  context,
-                  rootNavigator: true,
-                ).pushNamedAndRemoveUntil(BaseRoute.signin, (route) => false);
+                // Clear authentication token
+                await BaseUrl.removeToken();
+
+                // Delete GetX controllers to reset state
+                Get.delete<ProfileController>(force: true);
+                Get.delete<CartController>(force: true);
+                Get.delete<WishlistController>(force: true);
+
+                if (mounted) {
+                  Navigator.of(
+                    context,
+                    rootNavigator: true,
+                  ).pushNamedAndRemoveUntil(BaseRoute.signin, (route) => false);
+                }
               },
               child: const Text("Logout", style: TextStyle(color: Colors.red)),
             ),
@@ -50,114 +71,108 @@ class _MenuState extends State<Menu> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Column(
-          children: [
-            _ProfileCard(
-              name: "Rong",
-              userId: "00000001",
-              imagePath: 'icons/user.png',
-              backgroundColor: Colors.black,
-              onTap: () {
-                Navigator.pushNamed(context, BaseRoute.profile);
-              },
-            ),
-            const SizedBox(height: 24),
-            _SectionHeader(title: "Account Information"),
-            _MenuTile(
-              icon: Icons.location_pin,
-              title: "Address",
-              onTap: () {
-                Navigator.pushNamed(context, BaseRoute.address);
-              },
-            ),
-            _MenuTile(
-              icon: Icons.shopping_bag_outlined,
-              title: "Order History",
-              onTap: () {
-                Navigator.pushNamed(context, BaseRoute.orderHistory);
-              },
-            ),
-            _MenuTile(
-              icon: Icons.remove_shopping_cart_outlined,
-              title: "Returning",
-              onTap: () {
-                Navigator.pushNamed(context, BaseRoute.returning);
-              },
-            ),
-            _MenuTile(
-              icon: Icons.favorite_border_rounded,
-              title: "Wishlist",
-              onTap: () {
-                Navigator.pushNamed(context, BaseRoute.wishlist);
-              },
-            ),
-
-            const SizedBox(height: 20),
-            _SectionHeader(title: "Payments"),
-            _MenuTile(
-              icon: Icons.add_card,
-              title: "Manage Payment",
-              onTap: () {
-                Navigator.pushNamed(context, BaseRoute.managePayment);
-              },
-            ),
-
-            const SizedBox(height: 20),
-            _SectionHeader(title: "Settings & Help"),
-            _MenuTile(
-              icon: Icons.contact_support_outlined,
-              title: "Help Center",
-              onTap: () {
-                Navigator.pushNamed(context, BaseRoute.helpCenter);
-              },
-            ),
-            _MenuTile(
-              icon: Icons.key_outlined,
-              title: "Change Password",
-              onTap: () {
-                Navigator.pushNamed(context, BaseRoute.changepass);
-              },
-            ),
-            _MenuTile(
-              icon: Icons.language,
-              title: "Language",
-              onTap: () {
-                Navigator.pushNamed(context, BaseRoute.language);
-              },
-            ),
-            _MenuTile(
-              icon: Icons.notifications_none_rounded,
-              title: "Notifications",
-              onTap: () {
-                Navigator.pushNamed(context, BaseRoute.notification);
-              },
-            ),
-            _MenuTile(
-              icon: Icons.contact_support_outlined,
-              title: "Privacy Policy",
-              onTap: () {
-                Navigator.pushNamed(context, BaseRoute.privacyPolicy);
-              },
-            ),
-            _MenuTile(
-              icon: Icons.contact_support_outlined,
-              title: "Terms of Service",
-              onTap: () {
-                Navigator.pushNamed(context, BaseRoute.termsOfService);
-              },
-            ),
-            _MenuTile(
-              icon: Icons.logout_rounded,
-              title: "Logout",
-              isDestructive: true,
-              onTap: () => _showLogoutDialog(context),
-            ),
-            const SizedBox(height: 30),
-            const _FooterInfo(),
-            const SizedBox(height: 20),
-          ],
+      body: Obx(
+        () => SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Column(
+            children: [
+              _ProfileCard(
+                name: profileController.userName,
+                userId: profileController.userId.value,
+                imagePath: profileController.imageUrl.value,
+                backgroundColor: Colors.black,
+                isLoading: profileController.isLoading.value,
+                onTap: () {
+                  Navigator.pushNamed(context, BaseRoute.profile);
+                },
+              ),
+              const SizedBox(height: 24),
+              const _SectionHeader(title: "Account Information"),
+              _MenuTile(
+                icon: Icons.location_pin,
+                title: "Address",
+                onTap: () {
+                  Navigator.pushNamed(context, BaseRoute.address);
+                },
+              ),
+              _MenuTile(
+                icon: Icons.shopping_bag_outlined,
+                title: "Order History",
+                onTap: () {
+                  Navigator.pushNamed(context, BaseRoute.orderHistory);
+                },
+              ),
+              _MenuTile(
+                icon: Icons.favorite_border_rounded,
+                title: "Wishlist",
+                onTap: () {
+                  Navigator.pushNamed(context, BaseRoute.wishlist);
+                },
+              ),
+              const SizedBox(height: 20),
+              const _SectionHeader(title: "Payments"),
+              _MenuTile(
+                icon: Icons.add_card,
+                title: "Manage Payment",
+                onTap: () {
+                  Navigator.pushNamed(context, BaseRoute.managePayment);
+                },
+              ),
+              const SizedBox(height: 20),
+              const _SectionHeader(title: "Settings & Help"),
+              _MenuTile(
+                icon: Icons.contact_support_outlined,
+                title: "Help Center",
+                onTap: () {
+                  Navigator.pushNamed(context, BaseRoute.helpCenter);
+                },
+              ),
+              _MenuTile(
+                icon: Icons.key_outlined,
+                title: "Change Password",
+                onTap: () {
+                  Navigator.pushNamed(context, BaseRoute.changepass);
+                },
+              ),
+              _MenuTile(
+                icon: Icons.language,
+                title: "Language",
+                onTap: () {
+                  Navigator.pushNamed(context, BaseRoute.language);
+                },
+              ),
+              _MenuTile(
+                icon: Icons.notifications_none_rounded,
+                title: "Notifications",
+                onTap: () {
+                  Navigator.pushNamed(context, BaseRoute.notification);
+                },
+              ),
+              _MenuTile(
+                icon: Icons.contact_support_outlined,
+                title: "Privacy Policy",
+                onTap: () {
+                  Navigator.pushNamed(context, BaseRoute.privacyPolicy);
+                },
+              ),
+              _MenuTile(
+                icon: Icons.contact_support_outlined,
+                title: "Terms of Service",
+                onTap: () {
+                  Navigator.pushNamed(context, BaseRoute.termsOfService);
+                },
+              ),
+              _MenuTile(
+                icon: Icons.logout_rounded,
+                title: "Logout",
+                isDestructive: true,
+                onTap: () => _showLogoutDialog(context),
+              ),
+              const SizedBox(height: 30),
+              const _FooterInfo(),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );
@@ -169,6 +184,7 @@ class _ProfileCard extends StatelessWidget {
   final String userId;
   final String imagePath;
   final Color backgroundColor;
+  final bool isLoading;
   final VoidCallback onTap;
 
   const _ProfileCard({
@@ -176,6 +192,7 @@ class _ProfileCard extends StatelessWidget {
     required this.userId,
     required this.imagePath,
     required this.backgroundColor,
+    required this.isLoading,
     required this.onTap,
   });
 
@@ -187,7 +204,7 @@ class _ProfileCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             offset: const Offset(0, 4),
             blurRadius: 12,
           ),
@@ -199,26 +216,37 @@ class _ProfileCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(24),
           child: Padding(
-            padding: const EdgeInsets.only(
-              left: 16.0,
-              right: 16,
-              top: 32,
-              bottom: 32,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 32),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    color: backgroundColor.withValues(alpha: 0.5),
-                    shape: BoxShape.circle,
-                  ),
-                  child: CircleAvatar(
-                    backgroundImage: AssetImage(imagePath),
-                    radius: 50,
-                    backgroundColor: Colors.white,
-                  ),
-                ),
+                isLoading
+                    ? Shimmer.fromColors(
+                        baseColor: Colors.grey[300]!,
+                        highlightColor: Colors.grey[100]!,
+                        child: Container(
+                          height: 100,
+                          width: 100,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                          ),
+                        ),
+                      )
+                    : Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: backgroundColor.withOpacity(0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: CircleAvatar(
+                          backgroundImage: imagePath.isNotEmpty
+                              ? NetworkImage(imagePath)
+                              : const AssetImage('icons/user.png')
+                                    as ImageProvider,
+                          radius: 50,
+                          backgroundColor: Colors.white,
+                        ),
+                      ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -269,7 +297,7 @@ class _MenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final kMainColor = Color.fromARGB(255, 227, 207, 54);
+    const kMainColor = Color.fromARGB(255, 227, 207, 54);
     final color = isDestructive ? Colors.redAccent : Colors.black87;
 
     return Container(
@@ -291,8 +319,8 @@ class _MenuTile extends StatelessWidget {
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: isDestructive
-                        ? Colors.red.withValues(alpha: 0.1)
-                        : kMainColor.withValues(alpha: 0.1),
+                        ? Colors.red.withOpacity(0.1)
+                        : kMainColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -339,7 +367,7 @@ class _SectionHeader extends StatelessWidget {
         children: [
           Text(
             title,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Colors.black54,
@@ -357,7 +385,7 @@ class _FooterInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return const Column(
       children: [
         Text(
           "SHOPING",
@@ -367,7 +395,7 @@ class _FooterInfo extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           "Version 1.0.1",
           style: TextStyle(fontSize: 12, color: Colors.black26),

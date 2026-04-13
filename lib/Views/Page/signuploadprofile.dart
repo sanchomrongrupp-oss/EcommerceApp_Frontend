@@ -112,7 +112,7 @@ class _SignUploadProfileState extends State<SignUploadProfile> {
 
       request.files.add(
         await http.MultipartFile.fromPath(
-          'profile_image', // Assuming the backend field is 'profile_image'
+          'image', // Changed from 'profile_image' to match backend
           _image!.path,
         ),
       );

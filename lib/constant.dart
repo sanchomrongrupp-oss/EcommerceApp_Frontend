@@ -4,14 +4,15 @@
 // import 'package:flutter/material.dart';
 
 import 'package:flutter/material.dart';
+import 'package:demo_interview/Base_Url/base_url.dart';
 
-const baseURL = "http://192.168.1.146:8000/api";
-const signinURL = baseURL + "/login";
-const signupURL = baseURL + "/register";
-const signoutURL = baseURL + "/logout";
-const userURL = baseURL + "/profile";
-const productURL = baseURL + "/productlist";
-const categoryURL = baseURL + "/categorylist";
+const baseURL = "https://ecommerceapp-backend-a8om.onrender.com/api";
+final signinURL = BaseUrl.loginUrl;
+final signupURL = BaseUrl.registerUrl;
+final signoutURL = BaseUrl.logoutUrl;
+final userURL = BaseUrl.profileUrl;
+final productURL = BaseUrl.productUrl;
+final categoryURL = BaseUrl.categoryUrl;
 
 //-----------ERROR-----------\\
 const serverError = "Server error";

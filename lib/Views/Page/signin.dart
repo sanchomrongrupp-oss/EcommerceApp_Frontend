@@ -36,26 +36,26 @@ class _SigninState extends State<Signin> {
           'email': _emailController.text.trim(),
           'password': _passwordController.text,
         }),
-      );
+      ).timeout(const Duration(seconds: 60));
+
+      debugPrint("API Status: ${response.statusCode}");
+      debugPrint("API Response Body: ${response.body}");
 
       if (!mounted) return;
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        debugPrint("Login Response: $data");
-
-        dynamic tokenValue =
-            data['access_token'] ??
-            (data['data'] != null ? data['data']['access_token'] : null) ??
-            data['token'] ??
-            (data['data'] != null ? data['data']['token'] : null);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final dataRaw = jsonDecode(response.body);
+        
+        // Match the verified structure: {"success": true, "data": {"access_token": "...", "user": {...}}}
+        final data = dataRaw['data'] ?? dataRaw;
+        
+        dynamic tokenValue = data['access_token'] ?? dataRaw['access_token'] ?? data['token'];
 
         if (tokenValue == null) {
           throw Exception('Token not found in response: ${response.body}');
         }
 
         final String token = tokenValue.toString();
-
         await BaseUrl.saveToken(token);
 
         setState(() => _loading = false);
@@ -81,17 +81,34 @@ class _SigninState extends State<Signin> {
         if (mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text(errorMessage)));
+          ).showSnackBar(SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.redAccent,
+          ));
         }
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
+      String errorType = "Error";
+      if (e.toString().contains("SocketException")) {
+        errorType = "Network Error (DNS/Firewall)";
+      } else if (e.toString().contains("TimeoutException")) {
+        errorType = "Connection Timeout (Server starting up?)";
+      } else if (e.toString().contains("HandshakeException")) {
+        errorType = "SSL Handshake Failed (Certificate issue)";
+      }
+      
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('An error occurred: $e')));
+        ).showSnackBar(SnackBar(
+          content: Text('$errorType: $e'),
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(label: "Dismiss", onPressed: () {}),
+        ));
       }
+      debugPrint("Signin Exception: $e");
     }
   }
 

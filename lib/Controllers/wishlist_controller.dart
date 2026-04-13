@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:demo_interview/Base_Url/base_url.dart';
+import 'package:demo_interview/Controllers/profile_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
@@ -11,20 +12,37 @@ class WishlistController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    fetchWishlist();
+    // Fetching will be handled by MainScreen
   }
 
   Future<void> fetchWishlist() async {
+     final ProfileController profileController = Get.find();
+    
+    // Ensure profile is loaded first to get the user ID
+    if (profileController.userId.isEmpty) {
+      await profileController.fetchProfile();
+    }
+    
+    final String userId = profileController.userId.value;
+    if (userId.isEmpty) {
+      debugPrint("Could not find user_id for wishlist");
+      return;
+    }
+
     isLoading.value = true;
     try {
-      final token = await BaseUrl.getToken();
-      final response = await http.get(
-        Uri.parse(BaseUrl.wishlistUrl),
-        headers: {
-          'Authorization': 'Bearer ${token ?? ""}',
-          'Accept': 'application/json',
-        },
-      );
+      final String? token = await BaseUrl.getToken();
+      if (token == null) return;
+
+      final response = await http
+          .get(
+            Uri.parse("${BaseUrl.wishlistUrl}/user/$userId"),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -32,6 +50,8 @@ class WishlistController extends GetxController {
         if (rawItems is List) {
           wishlistItems.value = rawItems;
         }
+      } else if (response.statusCode == 401) {
+        BaseUrl.handleUnauthorized();
       }
     } catch (e) {
       debugPrint("Error fetching wishlist: $e");
@@ -61,80 +81,107 @@ class WishlistController extends GetxController {
 
     try {
       if (currentlyFavorite) {
-        // Find the index to remove it from local state immediately for better UX
-        final index = wishlistItems.indexWhere((item) {
+        final itemToRemove = wishlistItems.firstWhere((item) {
           final String? id =
               item['product_id']?.toString() ??
               item['id']?.toString() ??
               item['_id']?.toString();
           return id == productId;
-        });
+        }, orElse: () => null);
 
-        if (index != -1) {
-          wishlistItems.removeAt(index);
-        }
+        if (itemToRemove != null) {
+          final String? deleteId =
+              itemToRemove['_id']?.toString() ?? itemToRemove['id']?.toString();
 
-        final response = await http.delete(
-          Uri.parse("${BaseUrl.wishlistUrl}/$productId"),
-          headers: {
-            'Authorization': 'Bearer ${token ?? ""}',
-            'Accept': 'application/json',
-          },
-        );
+          if (deleteId == null || deleteId == productId) {
+            await fetchWishlist();
+            return;
+          }
 
-        if (response.statusCode != 200 && response.statusCode != 204) {
-          // Rollback if failed
-          fetchWishlist();
+          wishlistItems.remove(itemToRemove);
+          final response = await http
+              .delete(
+                Uri.parse("${BaseUrl.wishlistUrl}/$deleteId"),
+                headers: {
+                  'Authorization': 'Bearer $token',
+                  'Accept': 'application/json',
+                },
+              )
+              .timeout(const Duration(seconds: 60));
+
+          if (response.statusCode != 200 && response.statusCode != 204) {
+            await fetchWishlist();
+          }
         }
       } else {
-        // Add locally first for better UX
+        final ProfileController profileController = Get.find();
+        final String userId = profileController.userId.value;
+        if (userId.isEmpty) return;
+
         wishlistItems.add({'product_id': productId, ...product});
 
-        final response = await http.post(
-          Uri.parse(BaseUrl.wishlistUrl),
-          headers: {
-            'Authorization': 'Bearer ${token ?? ""}',
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: jsonEncode({'product_id': productId}),
-        );
+        final Map<String, dynamic> body = {
+          'user_id': userId,
+          'product_id': productId,
+        };
+
+        final response = await http
+            .post(
+              Uri.parse(BaseUrl.wishlistUrl),
+              headers: {
+                'Authorization': 'Bearer $token',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: jsonEncode(body),
+            )
+            .timeout(const Duration(seconds: 60));
 
         if (response.statusCode != 200 && response.statusCode != 201) {
-          // Rollback if failed
-          fetchWishlist();
+          await fetchWishlist();
         } else {
-          // Refresh to get correct data from server if needed
-          fetchWishlist();
+          await fetchWishlist();
         }
       }
     } catch (e) {
       debugPrint("Error toggling favorite: $e");
-      fetchWishlist(); // Refresh to sync on error
+      await fetchWishlist();
     }
   }
 
   void removeFromWishlist(String productId, int index) async {
     final String? token = await BaseUrl.getToken();
 
-    // Remove locally
-    wishlistItems.removeAt(index);
+    if (index >= 0 && index < wishlistItems.length) {
+      final itemToRemove = wishlistItems[index];
+      final String? deleteId =
+          itemToRemove['_id']?.toString() ?? itemToRemove['id']?.toString();
 
-    try {
-      final response = await http.delete(
-        Uri.parse("${BaseUrl.wishlistUrl}/$productId"),
-        headers: {
-          'Authorization': 'Bearer ${token ?? ""}',
-          'Accept': 'application/json',
-        },
-      );
+      wishlistItems.removeAt(index);
 
-      if (response.statusCode != 200 && response.statusCode != 204) {
-        fetchWishlist(); // Rollback
+      if (deleteId == null || deleteId == productId) {
+        await fetchWishlist();
+        return;
       }
-    } catch (e) {
-      debugPrint("Error removing from wishlist: $e");
-      fetchWishlist();
+
+      try {
+        final response = await http
+            .delete(
+              Uri.parse("${BaseUrl.wishlistUrl}/$deleteId"),
+              headers: {
+                'Authorization': 'Bearer ${token ?? ""}',
+                'Accept': 'application/json',
+              },
+            )
+            .timeout(const Duration(seconds: 60));
+
+        if (response.statusCode != 200 && response.statusCode != 204) {
+          await fetchWishlist();
+        }
+      } catch (e) {
+        debugPrint("Error removing from wishlist: $e");
+        await fetchWishlist();
+      }
     }
   }
 }

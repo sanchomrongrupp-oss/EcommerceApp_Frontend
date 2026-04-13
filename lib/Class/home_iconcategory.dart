@@ -28,8 +28,8 @@ class HomeIconCategory extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: Wrap(
-        spacing: 8,
-        runSpacing: 6,
+        spacing: 3,
+        runSpacing: 3,
         children: [
           for (int i = 0; i < categoryData.length; i++)
             Padding(

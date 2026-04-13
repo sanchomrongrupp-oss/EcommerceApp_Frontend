@@ -6,6 +6,8 @@ import 'package:demo_interview/Views/Screen/store.dart';
 import 'package:demo_interview/Views/Screen/menu.dart';
 import 'package:demo_interview/Route/base_routes.dart';
 import 'package:demo_interview/Controllers/wishlist_controller.dart';
+import 'package:demo_interview/Controllers/cart_controller.dart';
+import 'package:demo_interview/Controllers/profile_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -62,8 +64,23 @@ class MyApp extends StatelessWidget {
 class MainScreen extends StatelessWidget {
   final NavigationController controller = Get.put(NavigationController());
   final WishlistController wishlistController = Get.put(WishlistController());
+  final CartController cartController = Get.put(CartController());
+  final ProfileController profileController = Get.put(ProfileController());
 
-  MainScreen({super.key});
+  MainScreen({super.key}) {
+    _initData();
+  }
+
+  Future<void> _initData() async {
+    // 1. Fetch Profile first (other controllers depend on user ID)
+    await profileController.fetchProfile();
+    
+    // 2. Fetch Dependent Data
+    await Future.wait([
+      cartController.fetchCart(),
+      wishlistController.fetchWishlist(),
+    ]);
+  }
 
   @override
   Widget build(BuildContext context) {

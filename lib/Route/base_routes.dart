@@ -4,7 +4,6 @@ import 'package:demo_interview/Views/Page/addtocart.dart';
 import 'package:demo_interview/Views/Page/payment.dart';
 import 'package:demo_interview/Views/Screen/menu.dart';
 import 'package:demo_interview/Views/Page/order_history.dart';
-import 'package:demo_interview/Views/Page/returning.dart';
 import 'package:demo_interview/Views/Page/wishlist.dart';
 import 'package:demo_interview/Views/Page/changepass.dart';
 import 'package:demo_interview/Views/Page/managepayment.dart';
@@ -27,38 +26,38 @@ import 'package:demo_interview/Views/Page/editprofile.dart'; // editprofile_scre
 import 'package:demo_interview/Views/Page/termsconditions.dart'; // termsconditions_screen
 import 'package:demo_interview/Views/Page/filter_product.dart';
 import 'package:demo_interview/Views/Page/signuploadprofile.dart';
+import 'package:demo_interview/Route/route_constants.dart';
 
 class BaseRoute {
-  static const String home = '/home';
-  static const String signin = '/signin';
-  static const String signup = '/signup';
-  static const String loading = '/loading';
-  static const String profile = '/profile';
-  static const String editProfile = '/editprofile';
-  static const String termsConditions = '/termsconditions';
-  static const String store = '/store';
-  static const String favorite = '/favorite';
-  static const String checkout = '/checkout';
-  static const String menu = '/menu';
-  static const String buy = '/buy';
-  static const String dashboard = '/dash_board';
-  static const String productDetail = '/product_detail';
-  static const String address = '/address';
-  static const String orderHistory = '/order_history';
-  static const String returning = '/returning';
-  static const String wishlist = '/wishlist';
-  static const String changepass = '/changepass';
-  static const String language = '/language';
-  static const String filterProduct = '/filter_product';
-  static const String addToCart = '/add_to_cart';
-  static const String payment = '/payment';
-  static const String notification = '/notification';
-  static const String notificationDetail = '/notificationDetail';
-  static const String managePayment = '/managePayment';
-  static const String helpCenter = '/helpCenter';
-  static const String privacyPolicy = '/privacyPolicy';
-  static const String termsOfService = '/termsOfService';
-  static const String signUploadProfile = '/sign_upload_profile';
+  static const String home = RouteConstants.home;
+  static const String signin = RouteConstants.signin;
+  static const String signup = RouteConstants.signup;
+  static const String loading = RouteConstants.loading;
+  static const String profile = RouteConstants.profile;
+  static const String editProfile = RouteConstants.editProfile;
+  static const String termsConditions = RouteConstants.termsConditions;
+  static const String store = RouteConstants.store;
+  static const String favorite = RouteConstants.favorite;
+  static const String checkout = RouteConstants.checkout;
+  static const String menu = RouteConstants.menu;
+  static const String buy = RouteConstants.buy;
+  static const String dashboard = RouteConstants.dashboard;
+  static const String productDetail = RouteConstants.productDetail;
+  static const String address = RouteConstants.address;
+  static const String orderHistory = RouteConstants.orderHistory;
+  static const String wishlist = RouteConstants.wishlist;
+  static const String changepass = RouteConstants.changepass;
+  static const String language = RouteConstants.language;
+  static const String filterProduct = RouteConstants.filterProduct;
+  static const String addToCart = RouteConstants.addToCart;
+  static const String payment = RouteConstants.payment;
+  static const String notification = RouteConstants.notification;
+  static const String notificationDetail = RouteConstants.notificationDetail;
+  static const String managePayment = RouteConstants.managePayment;
+  static const String helpCenter = RouteConstants.helpCenter;
+  static const String privacyPolicy = RouteConstants.privacyPolicy;
+  static const String termsOfService = RouteConstants.termsOfService;
+  static const String signUploadProfile = RouteConstants.signUploadProfile;
 
   static Map<String, WidgetBuilder> routes = {
     home: (context) => const Home(),
@@ -77,7 +76,6 @@ class BaseRoute {
     productDetail: (context) => const ProductDetail(),
     address: (context) => const AddressScreen(),
     orderHistory: (context) => const OrderHistoryScreen(),
-    returning: (context) => const ReturningScreen(),
     wishlist: (context) => const WishlistScreen(),
     changepass: (context) => const ChangePasswordScreen(),
     language: (context) => const LanguageScreen(),
@@ -89,7 +87,8 @@ class BaseRoute {
     privacyPolicy: (context) => const PrivacyPolicy(),
     termsOfService: (context) => const TermsOfService(),
     signUploadProfile: (context) => SignUploadProfile(
-      userData: ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?,
+      userData:
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?,
     ),
   };
 }

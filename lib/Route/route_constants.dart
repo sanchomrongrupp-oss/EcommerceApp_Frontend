@@ -1,0 +1,31 @@
+class RouteConstants {
+  static const String home = '/home';
+  static const String signin = '/signin';
+  static const String signup = '/signup';
+  static const String loading = '/loading';
+  static const String profile = '/profile';
+  static const String editProfile = '/editprofile';
+  static const String termsConditions = '/termsconditions';
+  static const String store = '/store';
+  static const String favorite = '/favorite';
+  static const String checkout = '/checkout';
+  static const String menu = '/menu';
+  static const String buy = '/buy';
+  static const String dashboard = '/dash_board';
+  static const String productDetail = '/product_detail';
+  static const String address = '/address';
+  static const String orderHistory = '/order_history';
+  static const String wishlist = '/wishlist';
+  static const String changepass = '/changepass';
+  static const String language = '/language';
+  static const String filterProduct = '/filter_product';
+  static const String addToCart = '/add_to_cart';
+  static const String payment = '/payment';
+  static const String notification = '/notification';
+  static const String notificationDetail = '/notificationDetail';
+  static const String managePayment = '/managePayment';
+  static const String helpCenter = '/helpCenter';
+  static const String privacyPolicy = '/privacyPolicy';
+  static const String termsOfService = '/termsOfService';
+  static const String signUploadProfile = '/sign_upload_profile';
+}

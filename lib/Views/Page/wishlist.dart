@@ -1,10 +1,8 @@
-import 'dart:convert';
 import 'package:demo_interview/Base_Url/base_url.dart';
 import 'package:demo_interview/Route/base_routes.dart';
 import 'package:demo_interview/Controllers/wishlist_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
 
 class WishlistScreen extends StatefulWidget {
   const WishlistScreen({super.key});
@@ -91,16 +89,19 @@ class _WishlistScreenState extends State<WishlistScreen> {
   }
 
   Widget _buildWishlistItem(dynamic item, Color mainColor, int index) {
+    final dynamic productData = item['product'] ?? item;
+    
     final String title =
-        item['title']?.toString() ?? item['name']?.toString() ?? 'Product Name';
+        productData['title']?.toString() ?? productData['name']?.toString() ?? 'Product Name';
     final String price =
-        item['price']?.toString() ?? item['base_price']?.toString() ?? '0.00';
-    final String? id = item['id']?.toString() ?? item['_id']?.toString();
+        productData['price']?.toString() ?? productData['base_price']?.toString() ?? '0.00';
+    // Use product_id for deletion if your API deletes by product_id, or _id if by wishlist wrapper id
+    final String? id = item['product_id']?.toString() ?? item['_id']?.toString() ?? productData['_id']?.toString();
     final String? imageUrl =
-        item['image']?.toString() ?? item['image_url']?.toString();
+        productData['image']?.toString() ?? productData['image_url']?.toString();
     final String fullImageUrl = BaseUrl.getFullImageUrl(imageUrl);
     final double rating =
-        double.tryParse(item['rating']?.toString() ?? "0.0") ?? 0.0;
+        double.tryParse(productData['rating']?.toString() ?? "0.0") ?? 0.0;
 
     return Container(
       decoration: BoxDecoration(
@@ -196,7 +197,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                             Navigator.pushNamed(
                               context,
                               BaseRoute.addToCart,
-                              arguments: item,
+                              arguments: productData, // pass the actual product, not wrapper
                             );
                           },
                           child: Container(

@@ -5,6 +5,8 @@ import 'package:demo_interview/constant.dart';
 import 'package:demo_interview/Route/base_routes.dart';
 import 'package:demo_interview/Base_Url/base_url.dart';
 import 'package:demo_interview/Controllers/wishlist_controller.dart';
+import 'package:demo_interview/Controllers/cart_controller.dart';
+import 'package:demo_interview/Controllers/profile_controller.dart';
 import 'package:demo_interview/Class/home_buttomfilltercategory.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -24,8 +26,9 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   late PageController _pageController;
   late AnimationController _rotationController;
   Timer? _autoScrollTimer;
+  List<dynamic> _hotProducts = [];
+  bool _isLoadingHotProducts = true;
   int _currentPage = 0;
-  final int _hotItemsCount = 10;
   final List<String> _categories = [
     "All",
     "Shirt",
@@ -39,24 +42,6 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   ];
 
   List<String> get _categoriesicon => _categories.map((e) => "$e.png").toList();
-  String _imageProfileUrl = "";
-  String _firstName = "";
-  String _lastName = "";
-  String get _userName => "$_firstName $_lastName".trim().isEmpty
-      ? "User"
-      : "$_firstName $_lastName".trim();
-  bool _isLoadingProfile = true;
-  String wrapEvery15Words(String text) {
-    List<String> words = text.split(' ');
-    List<String> lines = [];
-
-    for (int i = 0; i < words.length; i += 15) {
-      int end = (i + 15 < words.length) ? i + 15 : words.length;
-      lines.add(words.sublist(i, end).join(' '));
-    }
-
-    return lines.join('\n'); // insert newline after every 15 words
-  }
 
   List<dynamic> _products = [];
   bool _isLoadingProducts = true;
@@ -65,11 +50,13 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   int _productLastPage = 1;
   late ScrollController _scrollController;
   final WishlistController wishlistController = Get.find();
+  final CartController cartController = Get.find();
+  final ProfileController profileController = Get.find();
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: 0);
+    _pageController = PageController(initialPage: 0, viewportFraction: 0.9);
 
     // Rotation Animation for product images
     _rotationController = AnimationController(
@@ -84,7 +71,10 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     _scrollController = ScrollController()..addListener(_onScroll);
 
     // Fetch Profile
-    _fetchProfile();
+    profileController.fetchProfile();
+
+    // Fetch Hot Products
+    _fetchHotProducts();
 
     // Fetch Products (initial page)
     _fetchProducts();
@@ -169,6 +159,8 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
             _isFetchingMore = false;
           });
         }
+      } else if (response.statusCode == 401) {
+        BaseUrl.handleUnauthorized();
       } else {
         debugPrint("Products Error: ${response.body}");
         if (mounted) {
@@ -189,56 +181,37 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _fetchProfile() async {
+  Future<void> _fetchHotProducts() async {
+    if (mounted) setState(() => _isLoadingHotProducts = true);
+
     try {
       final String? token = await BaseUrl.getToken();
-      if (token == null) {
-        debugPrint("No profile token found");
-        setState(() => _isLoadingProfile = false);
-        return;
-      }
-
-      debugPrint("Fetching profile from: ${BaseUrl.profileUrl}");
-
-      final response = await http.get(
-        Uri.parse(BaseUrl.profileUrl),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
-      );
-
-      debugPrint("Profile Status Code: ${response.statusCode}");
+      final response = await http
+          .get(
+            Uri.parse(BaseUrl.hotProductUrl),
+            headers: {
+              'Authorization': 'Bearer ${token ?? ""}',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        debugPrint("Profile Response: $data");
-
-        // Extract name based on common structures
-        final userData = data['data']?['user'] ?? data['user'] ?? data['data'];
-        if (userData != null) {
+        if (mounted) {
           setState(() {
-            _firstName = userData['first_name']?.toString() ?? "";
-            _lastName = userData['last_name']?.toString() ?? "";
-            _imageProfileUrl =
-                userData['profile_image_url']?.toString() ??
-                (userData['profile_image'] != null
-                    ? "${BaseUrl.baseUrl}${userData['profile_image']}"
-                    : "");
-
-            _isLoadingProfile = false;
+            _hotProducts = data['data'] ?? data['products'] ?? data;
+            _isLoadingHotProducts = false;
           });
-        } else {
-          debugPrint("User data not found in profile response");
-          setState(() => _isLoadingProfile = false);
         }
+      } else if (response.statusCode == 401) {
+        BaseUrl.handleUnauthorized();
       } else {
-        debugPrint("Profile Error: ${response.statusCode} - ${response.body}");
-        setState(() => _isLoadingProfile = false);
+        if (mounted) setState(() => _isLoadingHotProducts = false);
       }
     } catch (e) {
-      debugPrint("Profile Catch Error: $e");
-      setState(() => _isLoadingProfile = false);
+      debugPrint("Error fetching hot products: $e");
+      if (mounted) setState(() => _isLoadingHotProducts = false);
     }
   }
 
@@ -253,10 +226,11 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 
   void _startAutoScroll() {
     _autoScrollTimer?.cancel();
+    if (_hotProducts.isEmpty) return;
     _autoScrollTimer = Timer.periodic(const Duration(milliseconds: 2500), (
       timer,
     ) {
-      if (_currentPage < _hotItemsCount - 1) {
+      if (_currentPage < _hotProducts.length - 1) {
         _currentPage++;
       } else {
         _currentPage = 0;
@@ -280,7 +254,8 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
     });
     // fetch all items
     await Future.wait([
-      _fetchProfile(),
+      profileController.fetchProfile(),
+      _fetchHotProducts(),
       _fetchProducts(category: 'All', page: 1),
     ]);
   }
@@ -297,7 +272,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              builheader(context),
+              buildHeader(context),
               const SizedBox(height: 20),
               Column(
                 children: [
@@ -348,7 +323,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
   }
 
   //Header of App
-  Widget builheader(BuildContext context) {
+  Widget buildHeader(BuildContext context) {
     return Stack(
       children: <Widget>[
         Container(
@@ -365,15 +340,24 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
             padding: const EdgeInsets.only(left: 15, right: 15, bottom: 45),
             child: Row(
               children: [
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 500),
-                  child: Text(
-                    _isLoadingProfile ? 'Hi...' : 'Hi $_userName!',
-                    key: ValueKey(_isLoadingProfile ? 'loading' : 'loaded'),
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
+                Obx(
+                  () => AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 500),
+                    child: Text(
+                      profileController.isLoading.value
+                          ? 'Hi...'
+                          : 'Hi ${profileController.userName}!',
+                      key: ValueKey(
+                        profileController.isLoading.value
+                            ? 'loading'
+                            : 'loaded',
+                      ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
                   ),
                 ),
@@ -382,42 +366,47 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                   onTap: () {
                     Navigator.pushNamed(context, BaseRoute.profile);
                   },
-                  child: _isLoadingProfile
-                      ? Shimmer.fromColors(
-                          baseColor: Colors.grey[300]!,
-                          highlightColor: Colors.grey[100]!,
-                          child: Container(
+                  child: Obx(
+                    () => profileController.isLoading.value
+                        ? Shimmer.fromColors(
+                            baseColor: Colors.grey[300]!,
+                            highlightColor: Colors.grey[100]!,
+                            child: Container(
+                              height: 80,
+                              width: 80,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                              ),
+                            ),
+                          )
+                        : Container(
                             height: 80,
                             width: 80,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: Colors.white,
-                            ),
-                          ),
-                        )
-                      : Container(
-                          height: 80,
-                          width: 80,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white,
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                              image: DecorationImage(
+                                image:
+                                    profileController.imageUrl.value.isNotEmpty
+                                    ? NetworkImage(
+                                        profileController.imageUrl.value,
+                                      )
+                                    : const AssetImage('icons/adwords.png')
+                                          as ImageProvider,
+                                fit: BoxFit.cover,
                               ),
-                            ],
-                            image: DecorationImage(
-                              image: _imageProfileUrl.isNotEmpty
-                                  ? NetworkImage(_imageProfileUrl)
-                                  : const AssetImage('icons/adwords.png')
-                                        as ImageProvider,
-                              fit: BoxFit.cover,
                             ),
                           ),
-                        ),
+                  ),
                 ),
               ],
             ),
@@ -472,14 +461,14 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 
   //New or Hor Product
   Widget buildHotproduct() {
-    if (_isLoadingProducts) {
+    if (_isLoadingHotProducts) {
       return Shimmer.fromColors(
         baseColor: Colors.grey[300]!,
         highlightColor: Colors.grey[100]!,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Container(
-            height: 180,
+            height: 220,
             width: double.infinity,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
@@ -489,10 +478,13 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
         ),
       );
     }
+
+    if (_hotProducts.isEmpty) return const SizedBox.shrink();
+
     return Column(
       children: [
         SizedBox(
-          height: 180,
+          height: 220,
           width: double.infinity,
           child: PageView.builder(
             controller: _pageController,
@@ -500,91 +492,132 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
               setState(() {
                 _currentPage = index;
               });
-              _startAutoScroll(); // Reset timer on manual scroll
+              _startAutoScroll();
             },
-            itemCount: _hotItemsCount,
+            itemCount: _hotProducts.length,
             itemBuilder: (context, index) {
-              return TweenAnimationBuilder(
-                duration: const Duration(milliseconds: 400),
-                tween: Tween<double>(begin: 0.9, end: 1.0),
-                builder: (context, double value, child) {
-                  return Transform.scale(scale: value, child: child);
+              final product = _hotProducts[index];
+              final String? imageUrl =
+                  product['image']?.toString() ??
+                  product['image_url']?.toString() ??
+                  product['product_image']?.toString();
+
+              final String fullImageUrl = BaseUrl.getFullImageUrl(imageUrl);
+              final String heroTag =
+                  'hot_product_${product['id'] ?? product['_id'] ?? index}_$index';
+
+              return AnimatedBuilder(
+                animation: _pageController,
+                builder: (context, child) {
+                  double value = 1.0;
+                  if (_pageController.position.haveDimensions) {
+                    value = (_pageController.page! - index);
+                    value = (1 - (value.abs() * 0.3)).clamp(0.0, 1.0);
+                  } else {
+                    // Handle initial state before first frame
+                    value = index == _currentPage ? 1.0 : 0.8;
+                  }
+
+                  return Transform(
+                    transform: Matrix4.identity()
+                      ..setEntry(3, 2, 0.001) // perspective
+                      ..rotateY(
+                        (1 - value) *
+                            (index > (_pageController.page ?? 0) ? -0.5 : 0.5),
+                      )
+                      ..scale(value),
+                    alignment: Alignment.center,
+                    child: child,
+                  );
                 },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
+                    horizontal: 5,
+                    vertical: 10,
                   ),
                   child: Container(
-                    width: 320,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      gradient: LinearGradient(
-                        colors: const [
-                          Color.fromARGB(255, 227, 207, 54),
-                          Color.fromARGB(255, 245, 230, 100),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      borderRadius: BorderRadius.circular(28),
+                      color: Colors.white,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          offset: const Offset(0, 4),
-                          blurRadius: 10,
+                          color: Colors.black.withOpacity(0.12),
+                          offset: const Offset(0, 8),
+                          blurRadius: 20,
                         ),
                       ],
                     ),
-                    child: Stack(
-                      children: [
-                        const Positioned(
-                          right: -20,
-                          bottom: -20,
-                          child: Opacity(
-                            opacity: 0.3,
-                            child: Icon(
-                              Icons.flash_on,
-                              size: 150,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Row(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _navigateToProductDetail(product, heroTag),
+                        borderRadius: BorderRadius.circular(28),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(28),
+                          child: Stack(
+                            fit: StackFit.expand,
                             children: [
-                              Expanded(
-                                flex: 3,
+                              Hero(
+                                tag: heroTag,
+                                child: fullImageUrl.isNotEmpty
+                                    ? Image.network(
+                                        fullImageUrl,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) =>
+                                                const Icon(
+                                                  Icons.broken_image,
+                                                  size: 50,
+                                                ),
+                                      )
+                                    : const Icon(Icons.image, size: 50),
+                              ),
+                              // Subtle Overlay for text readability
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.black.withOpacity(0.5),
+                                      Colors.transparent,
+                                    ],
+                                    begin: Alignment.bottomCenter,
+                                    end: Alignment.topCenter,
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                left: 24,
+                                bottom: 30,
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
                                     _buildPulsingBadge(),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 10),
                                     Text(
-                                      "Special Edition ${index + 1}",
+                                      product['title']?.toString() ??
+                                          product['name']?.toString() ??
+                                          "Special Offer",
                                       style: const TextStyle(
-                                        color: Colors.black,
-                                        fontSize: 22,
+                                        color: Colors.white,
+                                        fontSize: 24,
                                         fontWeight: FontWeight.bold,
+                                        shadows: [
+                                          Shadow(
+                                            color: Colors.black45,
+                                            offset: Offset(0, 2),
+                                            blurRadius: 10,
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    const Text(
-                                      "Limited Time Offer",
-                                      style: TextStyle(
-                                        color: Colors.black54,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
                                   ],
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -596,7 +629,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
-            _hotItemsCount,
+            _hotProducts.length,
             (index) => AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -640,10 +673,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
           ),
         );
       },
-      onEnd: () {
-        // This is a simple trick to restart the animation without a controller
-        // However, in a real app, a proper AnimationController is better for infinite loops.
-      },
+      onEnd: () {},
     );
   }
 
@@ -657,7 +687,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
 
   //Category filter
   Widget buildCategoryFilterList() {
-    return SizedBox(
+    return const SizedBox(
       height: 40,
       child: Center(child: Text("Categories cleared")),
     );
@@ -682,9 +712,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
       context,
       BaseRoute.productDetail,
       arguments: productWithTag,
-    ).then((_) {
-      _refreshData();
-    });
+    );
   }
 
   // Individual Product Item Builder
@@ -716,7 +744,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             offset: const Offset(0, 4),
             blurRadius: 12,
           ),
@@ -777,8 +805,6 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                 ),
 
                 const SizedBox(width: 15),
-
-                /// ================= INFO SECTION =================
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -803,7 +829,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                                 wishlistController.toggleFavorite(product),
                             child: Obx(() {
                               final bool isFav = wishlistController.isFavorite(
-                                id,
+                                id ?? "",
                               );
                               return CircleAvatar(
                                 backgroundColor: Colors.grey[100],
@@ -845,11 +871,21 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
                               _buildActionIcon(
                                 label: "Cart",
                                 color: Colors.green,
-                                onTap: () => Navigator.pushNamed(
-                                  context,
-                                  BaseRoute.addToCart,
-                                  arguments: product,
-                                ).then((_) => _refreshData()),
+                                onTap: () {
+                                  final String? productId =
+                                      product['id']?.toString() ??
+                                      product['_id']?.toString();
+                                  if (productId != null) {
+                                    Navigator.pushNamed(
+                                      context,
+                                      BaseRoute.addToCart,
+                                    );
+                                    cartController.addToCart(
+                                      productId: productId,
+                                      qty: 1,
+                                    );
+                                  }
+                                },
                               ),
                               const SizedBox(width: 8),
                               _buildActionIcon(
@@ -883,7 +919,7 @@ class _HomeState extends State<Home> with TickerProviderStateMixin {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(

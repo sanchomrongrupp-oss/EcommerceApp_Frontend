@@ -1,7 +1,10 @@
 // ignore_for_file: prefer_const_constructors, use_build_context_synchronously
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:demo_interview/constant.dart';
+import 'package:demo_interview/Base_Url/base_url.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -27,19 +30,60 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Future<void> _updatePassword() async {
     setState(() => _loading = true);
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      final String? token = await BaseUrl.getToken();
+      
+      final response = await http.post(
+        Uri.parse(BaseUrl.changePasswordUrl),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'old_password': _currentPasswordController.text,
+          'new_password': _newPasswordController.text,
+        }),
+      ).timeout(const Duration(seconds: 30));
 
-    if (!mounted) return;
-    setState(() => _loading = false);
+      final data = jsonDecode(response.body);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Password updated successfully!"),
-        backgroundColor: Colors.green,
-      ),
-    );
-    Navigator.pop(context);
+      if (response.statusCode == 200 && data['success'] == true) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(data['message'] ?? "Password updated successfully!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
+      } else {
+        String msg = data['message'] ?? "Update failed";
+        if (data['errors'] != null) {
+          // Handle validation errors if any
+          final errors = data['errors'] as Map;
+          msg = errors.values.first[0].toString();
+        }
+        
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override

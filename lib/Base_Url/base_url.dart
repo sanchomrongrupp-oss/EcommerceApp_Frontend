@@ -1,28 +1,11 @@
-import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:demo_interview/Route/route_constants.dart';
 
 class BaseUrl {
-  /// 🔥 Localhost IP
-  static const String machineHost = "127.0.0.1";
-
-  /// Android Emulator special IP
-  static const String emulatorHost = "10.0.2.2";
-
-  /// iOS simulator / local
-  static const String localhost = "127.0.0.1";
-
-  /// 🔹 Change this manually if needed
-  /// true = using real phone
-  /// false = using emulator
-  static const bool useRealDevice = false;
-
   static String get baseUrl {
-    if (Platform.isAndroid) {
-      final host = useRealDevice ? machineHost : emulatorHost;
-      return "http://$host:8000/api/";
-    } else {
-      return "http://$emulatorHost:8000/api/";
-    }
+    return "https://ecommerceapp-backend-a8om.onrender.com/api/";
   }
 
   static String get loginUrl => "${baseUrl}login";
@@ -31,7 +14,11 @@ class BaseUrl {
   static String get profileUrl => "${baseUrl}profile";
   static String get updateProfileUrl => "${baseUrl}profile/update";
   static String get productUrl => "${baseUrl}products";
+  static String get hotProductUrl => "${baseUrl}hot-products";
+  static String get categoryUrl => "${baseUrl}categories";
   static String get wishlistUrl => "${baseUrl}wishlists";
+  static String get cartUrl => "${baseUrl}carts";
+  static String get changePasswordUrl => "${baseUrl}change-password";
   static String get paywayCreatePaymentUrl => "${baseUrl}aba-v2/init";
   static String get paywayRenderCheckoutUrl => "${baseUrl}aba-v2/redirect";
 
@@ -61,11 +48,6 @@ class BaseUrl {
 
     // 🔹 If already full URL
     if (result.startsWith("http")) {
-      if (Platform.isAndroid && !useRealDevice) {
-        result = result
-            .replaceAll("localhost", emulatorHost)
-            .replaceAll("127.0.0.1", emulatorHost);
-      }
       return result;
     }
 
@@ -74,20 +56,48 @@ class BaseUrl {
       result = result.substring(1);
     }
 
-    final host = Platform.isAndroid
-        ? (useRealDevice ? machineHost : emulatorHost)
-        : localhost;
+    final storageRoot =
+        "https://ecommerceapp-backend-a8om.onrender.com/storage/";
 
-    final storageRoot = "http://$host:8000/storage/";
-
+    // 🔹 If already has storage/ prefix
     if (result.startsWith("storage/")) {
       result = result.replaceFirst("storage/", "");
     }
 
+    // 🔹 If already has folder/ prefix
     if (result.startsWith("$folder/")) {
       return "$storageRoot$result";
     }
 
+    // Default to folder/path
     return "$storageRoot$folder/$result";
+  }
+
+  // ================= UNAUTHORIZED HANDLE =================
+
+  static void handleUnauthorized() async {
+    // Clear token
+    await removeToken();
+
+    // Reset GetX states globally to prevent data leaking
+    // Using simple Get.offAll ensures a fresh start,
+    // but we can also manually delete core controllers if needed.
+    // To avoid circular dependencies, we use their registered names or dynamic deletion.
+
+    // Redirect to signin using route constant
+    Get.offAllNamed(RouteConstants.signin);
+
+    // Notify user
+    Get.snackbar(
+      "Session Expired",
+      "Your session has expired. Please login again.",
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+      snackPosition: SnackPosition.BOTTOM,
+      icon: const Icon(Icons.lock_clock_outlined, color: Colors.white),
+      duration: const Duration(seconds: 4),
+      margin: const EdgeInsets.all(15),
+      borderRadius: 15,
+    );
   }
 }

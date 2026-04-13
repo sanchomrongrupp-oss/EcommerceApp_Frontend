@@ -1,12 +1,11 @@
-import 'dart:convert';
 import 'package:demo_interview/Base_Url/base_url.dart';
 import 'package:demo_interview/Controllers/wishlist_controller.dart';
+import 'package:demo_interview/Controllers/cart_controller.dart';
 import 'package:demo_interview/Route/base_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_instance/src/extension_instance.dart';
 import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
-import 'package:http/http.dart' as http;
 import 'package:shimmer/shimmer.dart';
 
 class ProductDetail extends StatefulWidget {
@@ -27,6 +26,7 @@ class _ProductDetailState extends State<ProductDetail> {
   int _quantity = 1;
 
   final WishlistController wishlistController = Get.find();
+  final CartController cartController = Get.find();
 
   List<String> _colors = [];
   List<String> _sizes = [];
@@ -454,22 +454,23 @@ class _ProductDetailState extends State<ProductDetail> {
               child: customButton(
                 title: "Add to Cart",
                 onTap: () {
-                  final String priceStr = product!['price']?.toString() ?? "0";
-                  final double price = double.tryParse(priceStr) ?? 0.0;
-                  final String imageUrl = _images.isNotEmpty
-                      ? _images[0]
-                      : (product!['image']?.toString() ?? "");
+                  final String? productId =
+                      product!['id']?.toString() ?? product!['_id']?.toString();
+                  if (productId != null) {
+                    final String? color = _colors.isNotEmpty
+                        ? _colors[_selectedColorIndex]
+                        : null;
+                    final String? size = _sizes.isNotEmpty
+                        ? _sizes[_selectedSizeIndex]
+                        : null;
 
-                  Navigator.pushNamed(
-                    context,
-                    BaseRoute.checkout,
-                    arguments: {
-                      'title': product!['title'] ?? product!['name'],
-                      'image': BaseUrl.getFullImageUrl(imageUrl),
-                      'price': price,
-                      'qty': _quantity,
-                    },
-                  );
+                    cartController.addToCart(
+                      productId: productId,
+                      qty: _quantity,
+                      color: color,
+                      size: size,
+                    );
+                  }
                 },
                 color: const Color.fromARGB(255, 227, 207, 54),
               ),

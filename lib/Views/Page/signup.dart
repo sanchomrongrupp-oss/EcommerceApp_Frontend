@@ -7,6 +7,7 @@ import 'package:demo_interview/Base_Url/base_url.dart';
 import 'package:demo_interview/Route/base_routes.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 
 class Signup extends StatefulWidget {
   const Signup({super.key});
@@ -51,32 +52,41 @@ class _SignupState extends State<Signup> {
           'phone': _phoneController.text.trim(),
           'password': _passwordController.text,
         }),
-      );
+      ).timeout(const Duration(seconds: 60));
+
+      debugPrint("Signup Status: ${response.statusCode}");
+      debugPrint("Signup Response: ${response.body}");
 
       if (!mounted) return;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        debugPrint("Signup Success: $data");
+        final dataRaw = jsonDecode(response.body);
+        debugPrint("Signup Success: $dataRaw");
+
+        final data = dataRaw['data'] ?? dataRaw;
 
         // 🔥 Extract token if available (to auto-login the user for the next step)
-        dynamic tokenValue =
-            data['access_token'] ??
-            (data['data'] != null ? data['data']['access_token'] : null) ??
-            data['token'] ??
-            (data['data'] != null ? data['data']['token'] : null);
+        dynamic tokenValue = data['access_token'] ?? dataRaw['access_token'] ?? data['token'];
 
         if (tokenValue != null) {
           await BaseUrl.saveToken(tokenValue.toString());
         }
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Account created successfully!"),
-              backgroundColor: Colors.green,
+          final snackBar = SnackBar(
+            elevation: 0,
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.transparent,
+            content: AwesomeSnackbarContent(
+              title: 'Success!',
+              message: 'Account created successfully! Welcome aboard.',
+              contentType: ContentType.success,
             ),
           );
+
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(snackBar);
 
           Navigator.pushNamedAndRemoveUntil(
             context,
@@ -107,23 +117,51 @@ class _SignupState extends State<Signup> {
         }
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMessage),
-              backgroundColor: Colors.redAccent,
+          final snackBar = SnackBar(
+            elevation: 0,
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.transparent,
+            content: AwesomeSnackbarContent(
+              title: 'Registration Error',
+              message: errorMessage,
+              contentType: ContentType.failure,
             ),
           );
+
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(snackBar);
         }
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
-      debugPrint("Signup Error: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('An error occurred: $e')));
+      String errorType = "Error";
+      if (e.toString().contains("SocketException")) {
+        errorType = "Network Error (DNS/Firewall)";
+      } else if (e.toString().contains("TimeoutException")) {
+        errorType = "Connection Timeout (Server starting up?)";
+      } else if (e.toString().contains("HandshakeException")) {
+        errorType = "SSL Handshake Failed (Certificate issue)";
       }
+
+      if (mounted) {
+        final snackBar = SnackBar(
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.transparent,
+          content: AwesomeSnackbarContent(
+            title: 'On Snap!',
+            message: '$errorType: $e',
+            contentType: ContentType.failure,
+          ),
+        );
+
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(snackBar);
+      }
+      debugPrint("Signup Exception: $e");
     }
   }
 

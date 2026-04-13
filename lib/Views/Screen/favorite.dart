@@ -1,11 +1,10 @@
-import 'dart:convert';
 import 'package:demo_interview/Route/base_routes.dart';
 import 'package:demo_interview/Base_Url/base_url.dart';
 import 'package:demo_interview/Controllers/wishlist_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
 import 'package:shimmer/shimmer.dart';
+import 'package:demo_interview/main.dart';
 
 class Favorite extends StatefulWidget {
   const Favorite({super.key});
@@ -94,7 +93,15 @@ class _FavoriteState extends State<Favorite> {
           ),
           const SizedBox(height: 32),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              try {
+                final NavigationController controller = Get.find();
+                controller.selectedIndex.value = 0;
+              } catch (e) {
+                // If it was pushed instead of tabbed
+                Navigator.popUntil(context, (route) => route.isFirst);
+              }
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.black,
               foregroundColor: kMainColor,
@@ -114,17 +121,28 @@ class _FavoriteState extends State<Favorite> {
   }
 
   Widget _buildFavoriteItem(dynamic item, int index) {
+    final dynamic productData = item['product'] ?? item;
+
     final String title =
-        item['title']?.toString() ?? item['name']?.toString() ?? 'Product Name';
+        productData['title']?.toString() ??
+        productData['name']?.toString() ??
+        'Product Name';
     final String price =
-        item['price']?.toString() ?? item['base_price']?.toString() ?? '0.00';
-    final String? id = item['id']?.toString() ?? item['_id']?.toString();
-    final String description = item['description']?.toString() ?? "";
+        productData['price']?.toString() ??
+        productData['base_price']?.toString() ??
+        '0.00';
+    // Use product_id for deletion if your API deletes by product_id, or _id if by wishlist wrapper id
+    final String? id =
+        item['product_id']?.toString() ??
+        item['_id']?.toString() ??
+        productData['_id']?.toString();
+    final String description = productData['description']?.toString() ?? "";
     final String? imageUrl =
-        item['image']?.toString() ?? item['image_url']?.toString();
+        productData['image']?.toString() ??
+        productData['image_url']?.toString();
     final String fullImageUrl = BaseUrl.getFullImageUrl(imageUrl);
     final double rating =
-        double.tryParse(item['rating']?.toString() ?? "0.0") ?? 0.0;
+        double.tryParse(productData['rating']?.toString() ?? "0.0") ?? 0.0;
 
     return Dismissible(
       key: Key(id ?? index.toString()),
@@ -277,7 +295,8 @@ class _FavoriteState extends State<Favorite> {
                       Navigator.pushNamed(
                         context,
                         BaseRoute.addToCart,
-                        arguments: item,
+                        arguments:
+                            productData, // pass the actual product, not wrapper
                       );
                     },
                     child: Container(
@@ -332,7 +351,11 @@ class _FavoriteState extends State<Favorite> {
                   children: [
                     Container(height: 18, width: 140, color: Colors.white),
                     const SizedBox(height: 8),
-                    Container(height: 14, width: double.infinity, color: Colors.white),
+                    Container(
+                      height: 14,
+                      width: double.infinity,
+                      color: Colors.white,
+                    ),
                     const SizedBox(height: 4),
                     Container(height: 14, width: 200, color: Colors.white),
                     const SizedBox(height: 12),

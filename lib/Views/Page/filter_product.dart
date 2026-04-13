@@ -60,7 +60,7 @@ class _FilterProductState extends State<FilterProduct> {
           'Authorization': 'Bearer ${token ?? ""}',
           'Accept': 'application/json',
         },
-      );
+      ).timeout(const Duration(seconds: 60));
 
       debugPrint("Filter Status Code: ${response.statusCode}");
 

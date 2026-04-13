@@ -364,19 +364,21 @@ class _PaymentState extends State<Payment> {
       debugPrint("🚀 Calling: ${BaseUrl.paywayCreatePaymentUrl}");
       debugPrint("📦 Payload: amount: $totalAmount");
 
-      final response = await http.post(
-        Uri.parse(BaseUrl.paywayCreatePaymentUrl),
-        headers: {
-          'Authorization': 'Bearer ${token ?? ""}',
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'amount': totalAmount,
-          'firstName': 'User',
-          'lastName': 'Demo',
-        }),
-      );
+      final response = await http
+          .post(
+            Uri.parse(BaseUrl.paywayCreatePaymentUrl),
+            headers: {
+              'Authorization': 'Bearer ${token ?? ""}',
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'amount': totalAmount,
+              'firstName': 'User',
+              'lastName': 'Demo',
+            }),
+          )
+          .timeout(const Duration(seconds: 60));
 
       // 📥 Debug log response
       debugPrint("📥 Status: ${response.statusCode}");
@@ -495,7 +497,10 @@ class _PaymentState extends State<Payment> {
               ),
               child: const Text(
                 "Back to Home",
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
             ),
           ],
